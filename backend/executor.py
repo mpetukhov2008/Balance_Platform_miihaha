@@ -16,7 +16,7 @@ def execute(payload):
     elif mode == "docker":
         cmd = ["docker", "run", "--rm", "--name", container, "-i", "--network=none",
                "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
-               "--pids-limit=64", "--memory=512m", "--cpus=1", "--user=65534:65534",
+               "--pids-limit=64", "--memory="+os.environ.get("RUNNER_MEMORY","2g"), "--cpus=1", "--user=65534:65534",
                "--tmpfs", "/tmp:rw,noexec,nosuid,size=32m", os.environ.get("RUNNER_IMAGE", "balance-runner:local")]
     else:
         raise RuntimeError("Unknown execution mode")
@@ -33,7 +33,7 @@ def execute(payload):
             writer=threading.Thread(target=feed,daemon=True)
             writer.start()
             deadline=time.monotonic()+int(os.environ.get("SCRIPT_TIMEOUT","60"))
-            limit=int(os.environ.get("SCRIPT_OUTPUT_LIMIT","100000000"))
+            limit=int(os.environ.get("SCRIPT_OUTPUT_LIMIT","536870912"))
             try:
                 while process.poll() is None:
                     if time.monotonic()>deadline:
