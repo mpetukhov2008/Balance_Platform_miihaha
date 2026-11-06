@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request, Response, Depends, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel, Field, ConfigDict, model_validator
-from backend import catalog, domain
+from backend import catalog, domain, queries
 from backend.store import Store, now, uid
 from backend.service import Service, STAGES, matches
 
@@ -325,67 +325,44 @@ def create_app(store=None):
 
     @app.post(base + "/runs/{id}/pivot/query")
     def pivot(id: str, body: Pivot, s=Depends(auth)):
-        result = ready(s, id, ("facts",))
-        filters = [f.model_dump() for f in body.filters]
-        grouped = {}
-        all_apps = set()
-        for fact in result["facts"]:
-            if not matches(fact, filters):
-                continue
-            rk, ck = tuple(fact[k] for k in body.rows), tuple(fact[k] for k in body.columns)
-            g = grouped.setdefault((rk, ck), {"value": 0, "apps": set(), "attrs": set(), "members":{}})
-            g["value"] += fact["CNT"]
-            g["apps"].update(fact["APP_IDS"])
-            g["attrs"].add((fact["PATH"], fact["ARRAY_KEY"]))
-            for app_id in fact["APP_IDS"]:
-                g["members"].setdefault(app_id,set()).add((fact["PATH"],fact["ARRAY_KEY"]))
-            all_apps.update(fact["APP_IDS"])
-        rkeys = sorted({k[0] for k in grouped}, key=lambda x: json.dumps(x, ensure_ascii=False))
-        ckeys = sorted({k[1] for k in grouped}, key=lambda x: json.dumps(x, ensure_ascii=False))
-        if len(ckeys) > 200:
-            fail("PIVOT_TOO_WIDE", "Добавьте фильтры или уменьшите число колонок")
-        chosen = rkeys[(body.page-1)*body.pageSize:body.page*body.pageSize]
-        ri, ci = {k:i for i,k in enumerate(chosen)}, {k:i for i,k in enumerate(ckeys)}
-        cells = []
-        for (rk, ck), g in grouped.items():
-            if rk not in ri:
-                continue
-            token = uid()
-            db.put("drill", s["user"]["id"], {"id":token,"runId":id,"expires":time.time()+3600,
-                "apps":sorted(g["apps"]), "attrs":[list(k) for k in sorted(g["attrs"])],
-                "members":{a:[list(k) for k in sorted(keys)] for a,keys in g["members"].items()}})
-            cells.append(dict(rowIndex=ri[rk], columnIndex=ci[ck], value=g["value"], drilldownToken=token))
-        return dict(rowFields=body.rows, columnFields=body.columns, rowKeys=chosen, columnKeys=ckeys,
-            cells=cells,totalRows=len(rkeys),page=body.page,pageSize=body.pageSize,
-            measure={"id":"SUM_CNT","label":"Участия заявок в группах","additive":True},uniqueApps=len(all_apps))
+        ready(s, id)
+        owner=s["user"]["id"]
+        filters=[f.model_dump() for f in body.filters]
+        try:
+            rows,columns,groups,total,unique=queries.pivot(db.engine,owner,id,body.rows,body.columns,filters,body.page,body.pageSize)
+        except ValueError:
+            fail("PIVOT_TOO_WIDE","Добавьте фильтры или уменьшите число колонок")
+        cells=[]
+        for ri,ci,value,cell_filters in groups:
+            token=uid()
+            db.put("drill",owner,{"id":token,"runId":id,"expires":time.time()+3600,"filters":cell_filters})
+            cells.append(dict(rowIndex=ri,columnIndex=ci,value=value,drilldownToken=token))
+        return dict(rowFields=body.rows,columnFields=body.columns,rowKeys=rows,columnKeys=columns,
+            cells=cells,totalRows=total,page=body.page,pageSize=body.pageSize,
+            measure={"id":"SUM_CNT","label":"Участия заявок в группах","additive":True},uniqueApps=unique)
 
     @app.post(base + "/runs/{id}/applications/query")
     def applications(id: str, body: Applications, s=Depends(auth)):
-        result = ready(s, id, ("facts","segments","rows","checks"))
-        attrs, scope, apps = None, "FILTER", None
+        ready(s,id)
+        filters=[f.model_dump() for f in body.filters]
+        scope,apps="FILTER",None
         if body.drilldownToken:
-            t = token_scope(s, id, body.drilldownToken)
-            apps, attrs, scope = set(t["apps"]), [{"PATH":p,"ARRAY_KEY":a} for p,a in t["attrs"]][:200], "FULL_GROUP"
+            t=token_scope(s,id,body.drilldownToken)
+            filters=t["filters"]+filters
+            scope="FULL_GROUP"
         elif body.checkRowId:
-            row = next((r for r in result["checks"] if r["rowId"] == body.checkRowId), None)
-            if not row:
-                fail("NOT_FOUND", "Строка проверки не найдена", 404)
-            apps, scope = set(row["APP_IDS"]), "CHECK_SAMPLE"
-        filters = [f.model_dump() for f in body.filters]
-        if filters:
-            filtered = {a for f in result["facts"] if matches(f, filters) for a in f["APP_IDS"]}
-            apps = filtered if apps is None else apps & filtered
-        counts = defaultdict(int)
-        for r in result["rows"]:
-            counts[r["APP_ID"]] += r["DIFF_FLAG"]
-        items = [{**{k: seg[k] for k in ("APP_ID","DECISION_BEFORE","DECISION_AFTER","DECISION_CHANGED")},
-                  "changedAttributes": counts[seg["APP_ID"]]} for seg in result["segments"] if apps is None or seg["APP_ID"] in apps]
-        return dict(page(items, body.page, body.pageSize), scope=scope, matchedAttributes=attrs)
+            result=ready(s,id,("checks",))
+            row=next((r for r in result["checks"] if r["rowId"]==body.checkRowId),None)
+            if row is None:
+                fail("NOT_FOUND","Строка проверки не найдена",404)
+            apps,scope=row["APP_IDS"],"CHECK_SAMPLE"
+        return dict(queries.applications(db.engine,s["user"]["id"],id,filters,apps,body.page,body.pageSize),
+                    scope=scope,matchedAttributes=None)
 
     @app.get(base + "/runs/{id}/applications/{app_id}")
     def application(id: str, app_id: str, s=Depends(auth)):
-        r = ready(s, id, ("segments",))
-        seg = next((a for a in r["segments"] if a["APP_ID"] == app_id), None)
+        ready(s,id)
+        seg=queries.segment(db.engine,s["user"]["id"],id,app_id)
         if seg is None:
             fail("NOT_FOUND", "Заявка не найдена", 404)
         evidence = [{"kind":row["CHANGE_TYPE"],"text":row["PATH"]+": "+row["VALUE_BEFORE"]+" → "+row["VALUE_AFTER"],
@@ -399,9 +376,9 @@ def create_app(store=None):
         allowed = None
         if body.drilldownToken:
             t = token_scope(s, id, body.drilldownToken)
-            if app_id not in t["apps"]:
-                fail("NOT_FOUND", "Заявка вне выборки", 404)
-            allowed = {tuple(k) for k in t["members"].get(app_id,[])}
+            allowed=queries.matching_attributes(db.engine,s["user"]["id"],id,app_id,t["filters"])
+            if not allowed:
+                fail("NOT_FOUND","Заявка вне выборки",404)
         rows = [r for r in db.attributes(s["user"]["id"],id,app_id,body.path,body.arrayKey,body.diffOnly) if (not body.diffOnly or r["DIFF_FLAG"])
             and (body.path is None or r["PATH"] == body.path) and (body.arrayKey is None or r["ARRAY_KEY"] == body.arrayKey)
             and (allowed is None or (r["PATH"],r["ARRAY_KEY"]) in allowed)]

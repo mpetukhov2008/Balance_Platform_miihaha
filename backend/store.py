@@ -20,11 +20,20 @@ records = Table("records", metadata,
     Column("diff_flag", Integer), Column("change_type", String(32)), Column("payload", JSON, nullable=False))
 Index("ix_attribute_lookup", records.c.run_id, records.c.section, records.c.app_id, records.c.path)
 Index("ix_changes", records.c.run_id, records.c.section, records.c.diff_flag, records.c.change_type)
+fact_members = Table("fact_members", metadata,
+    Column("run_id",String(128),primary_key=True), Column("owner",String(128),nullable=False),
+    Column("fact_ordinal",Integer,primary_key=True),Column("app_id",String(128),primary_key=True))
+Index("ix_member_app",fact_members.c.run_id,fact_members.c.owner,fact_members.c.app_id)
+Index("ix_member_cover",fact_members.c.run_id,fact_members.c.owner,fact_members.c.app_id,fact_members.c.fact_ordinal)
+Index("ix_member_fact",fact_members.c.run_id,fact_members.c.owner,fact_members.c.fact_ordinal,fact_members.c.app_id)
 
 class Store:
     def __init__(self, url=None):
         self.engine = create_engine(url or os.environ.get("DATABASE_URL", "sqlite:///runtime/balance.db"))
         metadata.create_all(self.engine)
+        # Additive schema upgrade for pre-existing v0.1 databases.
+        for idx in fact_members.indexes:
+            idx.create(self.engine,checkfirst=True)
 
     def put(self, kind, owner, data):
         with self.engine.begin() as c:
@@ -40,6 +49,17 @@ class Store:
                         for i,r in enumerate(data[section])]
                     for start in range(0,len(items),500):
                         c.execute(records.insert(),items[start:start+500])
+                    if section == "facts":
+                        c.execute(delete(fact_members).where(fact_members.c.run_id==data["id"],fact_members.c.owner==owner))
+                        batch=[]
+                        for i,fact in enumerate(data[section]):
+                            for app_id in set(fact["APP_IDS"]):
+                                batch.append(dict(run_id=data["id"],owner=owner,fact_ordinal=i,app_id=app_id))
+                                if len(batch)>=1000:
+                                    c.execute(fact_members.insert(),batch)
+                                    batch=[]
+                        if batch:
+                            c.execute(fact_members.insert(),batch)
                 data = {k:v for k,v in data.items() if k not in ("rows","segments","facts","checks","raw")}
             elif kind == "artifact" and data["id"].startswith("normalized-"):
                 run_id = data["id"]
