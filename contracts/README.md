@@ -1,0 +1,11 @@
+# Контракты интеграции
+
+HTTP endpoints и модели запросов экспортированы из FastAPI в `openapi.json`. Для семантики ответов и сценариев используется `../handoff/claude/API_CONTRACT.md`: в текущем OpenAPI ответы большинства endpoint не типизированы отдельными response_model, поэтому схема OpenAPI не заменяет этот документ.
+
+Base URL `/api/v1`. Браузер работает через Vite proxy, session cookie и X-CSRF-Token. Не включать demo fallback при ошибке реального API.
+
+Реализованы все маршруты v0.1. Источники процедур — рабочая область или зарегистрированный сервером FILE. Встроенные ID: builtin-normalize, builtin-compare, builtin-aggregate. Каталог выдаёт пять file-check_* процедур. Контракты Python: normalize-v1, compare-v1, aggregate-v1, check-v1; шаблоны запрашиваются через `/script-contracts`.
+
+Дополнения без смены формата: сырой JSON хранится как снимок прогона; token drill-down содержит точные пары атрибутов отдельно для каждой заявки. Отчёт по проверке ведёт только к её APP_IDS, не ко всему CNT. Политика выбора продукта для скалярных разрезов описана в README.
+
+Запуск API и worker — по корневому README. Docker-режим и PostgreSQL ещё требуют проверки на работающем Docker daemon. Сервер не запускает доверенный локальный режим автоматически.

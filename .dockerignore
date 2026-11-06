@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+runtime
+data
+Исходники/data
+handoff
+frontend
+tests
+**/__pycache__
