@@ -5,6 +5,7 @@ import type { MockApiClient } from "../api/mock";
 import { useAuth } from "../auth";
 import { Icon } from "./Icon";
 import { BrandLogo } from "./BrandLogo";
+import { AppFooter, HackChip } from "./Hack";
 
 function useTheme() {
   const [theme, setTheme] = useState<string>(() => {
@@ -55,6 +56,7 @@ export function Layout() {
             <span className="brand-divider" aria-hidden="true" />
             <div className="brand-sub">Анализ<br />изменений СПР</div>
           </NavLink>
+          <span className="top-hack"><HackChip /></span>
           <nav className="nav" aria-label="Разделы">
             <NavLink to="/runs" className="nav-link">
               <Icon name="runs" /> Запуски
@@ -87,6 +89,7 @@ export function Layout() {
       <main className="main">
         <Outlet />
       </main>
+      <AppFooter />
     </div>
   );
 }
