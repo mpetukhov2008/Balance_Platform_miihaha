@@ -29,6 +29,7 @@ const P: Record<string, string> = {
   moon: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z",
   eye: "M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   inbox: "M3 13h5l2 3h4l2-3h5M5 5h14l2 8v6H3v-6z",
+  swap: "M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4",
 };
 
 export function Icon({ name, size }: { name: string; size?: number }) {

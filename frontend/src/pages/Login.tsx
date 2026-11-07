@@ -39,7 +39,7 @@ export function Login() {
             </div>
           </div>
           <div>
-            <h1 className="login-hero">Что изменилось, у кого и из-за чего — до выката на прод.</h1>
+            <h1 className="login-hero">Что изменилось, у кого и из-за чего — <em>до выката на прод.</em></h1>
             <ul className="login-points">
               <li><Icon name="swap" /> Сравнение ответов BEFORE (MASTER) и AFTER (BETA)</li>
               <li><Icon name="table" /> Сводная с изменяемой раскладкой и переходом до атрибута</li>

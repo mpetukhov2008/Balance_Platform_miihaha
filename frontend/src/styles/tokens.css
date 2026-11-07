@@ -1,61 +1,72 @@
+/* Оранжево-чёрная палитра «Баланс Платформа». Все цвета компонентов берутся отсюда. */
 :root {
   color-scheme: light;
-  --bg: #f5f6f9;
+  --bg: #f3f3f5;
   --bg-elev: #ffffff;
-  --bg-sunken: #eef0f5;
-  --bg-hover: #f0f3fa;
-  --border: #e2e5ee;
-  --border-strong: #cdd2df;
-  --text: #171a23;
-  --text-2: #4a5165;
-  --text-3: #7b8297;
-  --accent: #315efb;
-  --accent-hover: #2149d8;
-  --accent-soft: #e8eeff;
-  --accent-text: #2149d8;
-  --ok: #138a5b;
-  --ok-soft: #e3f5ec;
-  --bad: #c9373b;
-  --bad-soft: #fde9e9;
-  --warn: #a8660b;
-  --warn-soft: #fdf1dc;
-  --muted-soft: #f1f2f6;
-  --before: #7a5af8;
-  --before-soft: #f0ecff;
-  --after: #0e9384;
-  --after-soft: #e0f5f2;
-  --new: #138a5b;
-  --lost: #c9373b;
-  --changed: #a8660b;
-  --heat: 49, 94, 251;
-  --shadow-1: 0 1px 2px rgba(20, 24, 40, .06), 0 1px 1px rgba(20, 24, 40, .04);
-  --shadow-2: 0 8px 24px rgba(20, 24, 40, .08), 0 2px 6px rgba(20, 24, 40, .05);
-  --radius: 10px;
-  --radius-sm: 7px;
-  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --bg-sunken: #f1f1f3;
+  --bg-hover: #f6f6f8;
+  --border: #ececf0;
+  --border-strong: #dcdce2;
+  --text: #121214;
+  --text-2: #45454d;
+  --text-3: #8a8a94;
+  --ink: #121214;
+  --ink-2: #1e1e22;
+  --on-ink: #ffffff;
+  --pill: #121214;
+  --on-pill: #ffffff;
+  --accent: #ff6a00;
+  --accent-hover: #f05f00;
+  --accent-soft: #fff1e6;
+  --accent-text: #d45500;
+  --on-accent: #121214;
+  --ok: #12945a;
+  --ok-soft: #e7f6ee;
+  --bad: #e5383b;
+  --bad-soft: #fdecec;
+  --warn: #b7791f;
+  --warn-soft: #fbf3e2;
+  --muted-soft: #f0f0f3;
+  --before: #3d3d45;
+  --before-soft: #ececf0;
+  --after: #d45500;
+  --after-soft: #fff1e6;
+  --new: #12945a;
+  --lost: #e5383b;
+  --changed: #b7791f;
+  --heat: 255, 106, 0;
+  --shadow-1: 0 1px 2px rgba(18, 18, 20, .04), 0 4px 16px rgba(18, 18, 20, .04);
+  --shadow-2: 0 12px 40px rgba(18, 18, 20, .10), 0 2px 8px rgba(18, 18, 20, .05);
+  --radius: 24px;
+  --radius-sm: 14px;
+  --font: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 }
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0f1117; --bg-elev: #171a23; --bg-sunken: #12141b; --bg-hover: #1e2230;
-    --border: #262b39; --border-strong: #343a4c;
-    --text: #e8eaf1; --text-2: #b0b6c8; --text-3: #7d8499;
-    --accent: #6b8cff; --accent-hover: #87a1ff; --accent-soft: #1d2647; --accent-text: #9db2ff;
-    --ok: #3ccf91; --ok-soft: #14301f; --bad: #ff6b6e; --bad-soft: #3a1a1c; --warn: #f2b14c; --warn-soft: #36290f; --muted-soft: #1c1f29;
-    --before: #a993ff; --before-soft: #2a2347; --after: #3fd1bf; --after-soft: #12302c;
-    --new: #3ccf91; --lost: #ff6b6e; --changed: #f2b14c; --heat: 107, 140, 255;
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, .4); --shadow-2: 0 10px 30px rgba(0, 0, 0, .45);
+    --bg: #0c0c0e; --bg-elev: #17171a; --bg-sunken: #121215; --bg-hover: #1f1f23;
+    --border: #26262b; --border-strong: #35353c;
+    --text: #f4f4f6; --text-2: #b9b9c2; --text-3: #7e7e88;
+    --ink: #000000; --ink-2: #141416; --on-ink: #ffffff; --pill: #f4f4f6; --on-pill: #121214;
+    --accent: #ff7a1f; --accent-hover: #ff8c3d; --accent-soft: #2e1a0c; --accent-text: #ff9a52; --on-accent: #121214;
+    --ok: #38d18e; --ok-soft: #10291c; --bad: #ff6467; --bad-soft: #351719; --warn: #f0b44c; --warn-soft: #33270f; --muted-soft: #1f1f23;
+    --before: #c9c9d2; --before-soft: #26262b; --after: #ff9a52; --after-soft: #2e1a0c;
+    --new: #38d18e; --lost: #ff6467; --changed: #f0b44c; --heat: 255, 122, 31;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .5); --shadow-2: 0 16px 48px rgba(0, 0, 0, .55);
   }
 }
+
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0f1117; --bg-elev: #171a23; --bg-sunken: #12141b; --bg-hover: #1e2230;
-  --border: #262b39; --border-strong: #343a4c;
-  --text: #e8eaf1; --text-2: #b0b6c8; --text-3: #7d8499;
-  --accent: #6b8cff; --accent-hover: #87a1ff; --accent-soft: #1d2647; --accent-text: #9db2ff;
-  --ok: #3ccf91; --ok-soft: #14301f; --bad: #ff6b6e; --bad-soft: #3a1a1c; --warn: #f2b14c; --warn-soft: #36290f; --muted-soft: #1c1f29;
-  --before: #a993ff; --before-soft: #2a2347; --after: #3fd1bf; --after-soft: #12302c;
-  --new: #3ccf91; --lost: #ff6b6e; --changed: #f2b14c; --heat: 107, 140, 255;
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4); --shadow-2: 0 10px 30px rgba(0, 0, 0, .45);
+  --bg: #0c0c0e; --bg-elev: #17171a; --bg-sunken: #121215; --bg-hover: #1f1f23;
+  --border: #26262b; --border-strong: #35353c;
+  --text: #f4f4f6; --text-2: #b9b9c2; --text-3: #7e7e88;
+  --ink: #000000; --ink-2: #141416; --on-ink: #ffffff; --pill: #f4f4f6; --on-pill: #121214;
+  --accent: #ff7a1f; --accent-hover: #ff8c3d; --accent-soft: #2e1a0c; --accent-text: #ff9a52; --on-accent: #121214;
+  --ok: #38d18e; --ok-soft: #10291c; --bad: #ff6467; --bad-soft: #351719; --warn: #f0b44c; --warn-soft: #33270f; --muted-soft: #1f1f23;
+  --before: #c9c9d2; --before-soft: #26262b; --after: #ff9a52; --after-soft: #2e1a0c;
+  --new: #38d18e; --lost: #ff6467; --changed: #f0b44c; --heat: 255, 122, 31;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .5); --shadow-2: 0 16px 48px rgba(0, 0, 0, .55);
 }
