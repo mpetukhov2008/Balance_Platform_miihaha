@@ -8,6 +8,17 @@ export const HACK = {
   team: "МИЯУХАХА",
 };
 
+export const SUPPORT = { url: "https://t.me/m_petukhov_2008", handle: "@m_petukhov_2008" };
+
+/** Ссылка на техподдержку в Telegram. */
+export function SupportLink() {
+  return (
+    <a className="support-link" href={SUPPORT.url} target="_blank" rel="noopener noreferrer">
+      <span className="support-dot" aria-hidden="true" /> Техподдержка 24/7 · Telegram {SUPPORT.handle}
+    </a>
+  );
+}
+
 /** Плашка в угловых скобках: [ ТЕКСТ ]. */
 export function Bracket({ children, accent, small, href }: { children: ReactNode; accent?: boolean; small?: boolean; href?: string }) {
   const cls = `bracket ${accent ? "accent" : ""} ${small ? "sm" : ""}`;
@@ -63,6 +74,7 @@ export function AppFooter() {
             {HACK.name}
           </a>
         </span>
+        <SupportLink />
         <span className="row" style={{ gap: 10 }}>
           <Bracket small>{HACK.dates}</Bracket>
           <Bracket small>онлайн / офлайн</Bracket>
