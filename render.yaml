@@ -1,6 +1,6 @@
 databases:
   - name: balance-platform-db
-    plan: free # или starter, если нужен больший объем
+    plan: free
     databaseName: balance_db
     user: balance_user
 
@@ -18,20 +18,23 @@ services:
           name: balance-platform-db
           property: connectionString
       - key: APP_PUBLIC_URL
-        sync: false # Вы впишете это значение вручную после создания фронтенда
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
       - key: AI_PROVIDER
         value: yandex
       - key: AI_FOLDER_ID
-        sync: false # Секрет, введете в дашборде
+        sync: false
       - key: AI_API_KEY
-        sync: false # Секрет, введете в дашборде
-    healthCheckPath: /api/v1/health # Важная вещь для Render, чтобы проверять, что сервис жив
+        sync: false
+    healthCheckPath: /api/v1/health
 
   # 2. Background Worker (для обработки задач)
+  # Важно: у Background Worker на Render нет бесплатного тарифа
   - type: worker
     name: balance-worker
     runtime: python
-    plan: free
+    plan: starter
     buildCommand: "pip install -r backend/requirements.lock.txt"
     startCommand: "python -m backend.worker"
     envVars:
@@ -40,7 +43,7 @@ services:
           name: balance-platform-db
           property: connectionString
       - key: EXECUTION_MODE
-        value: trusted-local # На Render нет Docker-in-Docker, поэтому только этот режим
+        value: trusted-local
       - key: AI_PROVIDER
         value: yandex
       - key: AI_FOLDER_ID
@@ -49,12 +52,12 @@ services:
         sync: false
 
   # 3. Frontend (Статический сайт)
+  # У статических сайтов НЕТ поля plan, его нельзя указывать
   - type: web
     name: balance-frontend
     runtime: static
-    plan: free
     buildCommand: "npm --prefix frontend ci && npm --prefix frontend run build"
-    staticPublishPath: "./frontend/dist" # Убедитесь, что Vite собирает в эту папку
+    staticPublishPath: "./frontend/dist"
     envVars:
       - key: VITE_API_BASE_URL
         fromService:
