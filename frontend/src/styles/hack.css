@@ -1,0 +1,98 @@
+/* Детали оформления по мотивам Nuclear IT Hack: широкий шрифт заголовков,
+   угловые скобки, контурный текст, космический чёрный и прямые углы. */
+:root {
+  --display: "Unbounded Variable", "Unbounded", var(--font);
+  --ink: #04060c;
+  --ink-2: #0b0f19;
+  --radius: 16px;
+  --radius-sm: 6px;
+}
+:root[data-theme="dark"] { --bg: #070910; --bg-elev: #10131b; --bg-sunken: #0c0f16; --bg-hover: #161a24; --border: #1d2230; --border-strong: #2a3040; --ink: #020308; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #070910; --bg-elev: #10131b; --bg-sunken: #0c0f16; --bg-hover: #161a24; --border: #1d2230; --border-strong: #2a3040; --ink: #020308; }
+}
+
+/* Типографика: широкий гротеск для заголовков и навигации */
+h1, .login-hero, .kpi-value, .display { font-family: var(--display); font-weight: 700; letter-spacing: -.01em; }
+h1 { font-size: 30px; text-transform: uppercase; line-height: 1.15; }
+.kpi-value { font-size: 34px; letter-spacing: -.02em; }
+.kpi-value .of { font-family: var(--font); }
+.app-hero h1 { text-transform: none; }
+
+/* Кнопки: прямоугольные, заглавные, как на сайте хакатона */
+.btn { border-radius: var(--radius-sm); font-family: var(--display); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; height: 44px; }
+.btn-sm { height: 34px; font-size: 11px; }
+.btn-icon { width: 34px; }
+
+/* Шапка: звёздная пыль, навигация заглавными с подчёркиванием активного раздела */
+.topbar { background: radial-gradient(1px 1px at 12% 30%, rgba(255,255,255,.35), transparent), radial-gradient(1px 1px at 47% 70%, rgba(255,255,255,.25), transparent), radial-gradient(1px 1px at 83% 40%, rgba(255,255,255,.3), transparent), var(--ink); border-bottom: 1px solid rgba(255, 255, 255, .06); }
+.nav-link { font-family: var(--display); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; border-radius: 0; height: 68px; padding: 0 14px; background: none !important; color: rgba(255, 255, 255, .7); box-shadow: inset 0 -2px 0 transparent; }
+.nav-link:hover { color: #fff; }
+.nav-link.active { color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+.top-btn { border-radius: var(--radius-sm); }
+
+/* Угловые скобки: [ ТЕКСТ ] */
+.bracket { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 18px; font-family: var(--display); font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: inherit; white-space: nowrap; }
+.bracket::before, .bracket::after { content: ""; position: absolute; top: 0; bottom: 0; width: 8px; border: 1.5px solid currentColor; opacity: .55; }
+.bracket::before { left: 0; border-right: 0; }
+.bracket::after { right: 0; border-left: 0; }
+.bracket.accent { color: var(--accent); }
+.bracket.sm { height: 28px; padding: 0 12px; font-size: 10px; }
+.bracket.sm::before, .bracket.sm::after { width: 6px; }
+a.bracket:hover { color: var(--accent); text-decoration: none; }
+.hack-chip { color: rgba(255, 255, 255, .78); }
+.hack-chip b { color: var(--accent); font-weight: 700; }
+
+/* Вкладки запуска: заглавные, активная в скобках */
+.tabs { background: transparent; box-shadow: none; padding: 0; gap: 4px; border-bottom: 1px solid var(--border); border-radius: 0; width: auto; }
+.tab { font-family: var(--display); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; border-radius: 0; height: 46px; padding: 0 16px; margin-bottom: -1px; }
+.tab:hover { background: none; color: var(--text); }
+.tab.active { background: none; color: var(--text); box-shadow: inset 0 -3px 0 var(--accent); }
+
+/* Сегментированные переключатели и бейджи — строже */
+.seg { border-radius: var(--radius-sm); }
+.seg button { border-radius: 4px; }
+.badge { border-radius: 4px; }
+
+/* Вход: космос, орбитальная надпись, контурный текст */
+.login-side { background: radial-gradient(1px 1px at 8% 12%, rgba(255,255,255,.5), transparent), radial-gradient(1px 1px at 26% 64%, rgba(255,255,255,.35), transparent), radial-gradient(1.5px 1.5px at 61% 18%, rgba(255,255,255,.45), transparent), radial-gradient(1px 1px at 72% 82%, rgba(255,255,255,.3), transparent), radial-gradient(1px 1px at 91% 48%, rgba(255,255,255,.4), transparent), var(--ink); }
+.login-side::before, .login-side::after { content: none; }
+.login-hero { font-size: 40px; line-height: 1.12; text-transform: uppercase; max-width: 620px; }
+.login-kicker { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 26px; }
+.orbit { position: absolute; right: -160px; bottom: -160px; width: 560px; height: 560px; pointer-events: none; }
+.orbit .planet { fill: url(#bp-planet); }
+.orbit .ring-text { font-family: var(--display); font-size: 21px; font-weight: 600; letter-spacing: 6px; fill: none; stroke: rgba(255, 255, 255, .5); stroke-width: .8; }
+.orbit .spin { transform-origin: 280px 280px; animation: orbit 60s linear infinite; }
+@keyframes orbit { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .orbit .spin { animation: none; } }
+.ghost-text { font-family: var(--display); font-weight: 800; text-transform: uppercase; line-height: .9; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, .14); white-space: nowrap; user-select: none; pointer-events: none; }
+.login-side .ghost-text { position: absolute; left: 56px; bottom: 34px; font-size: 92px; }
+.login-card { border-radius: var(--radius); }
+
+/* Подвал приложения с упоминанием хакатона */
+.app-foot { position: relative; overflow: hidden; background: var(--ink); color: rgba(255, 255, 255, .6); margin-top: 24px; }
+.app-foot-in { position: relative; max-width: 1440px; margin: 0 auto; padding: 28px 32px 30px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; font-size: 13px; }
+.app-foot .ghost-text { position: absolute; right: -10px; bottom: -18px; font-size: 120px; -webkit-text-stroke-color: rgba(255, 255, 255, .07); }
+.app-foot a { color: rgba(255, 255, 255, .85); }
+.app-foot a:hover { color: var(--accent); }
+
+/* Заголовок страницы: короткая оранжевая метка над названием */
+.page-head h1::before { content: ""; display: block; width: 36px; height: 4px; background: var(--accent); margin-bottom: 14px; }
+.crumbs + h1::before { display: none; }
+
+@media (max-width: 960px) {
+  .nav-link { height: 44px; }
+  .login-hero { font-size: 28px; }
+  .app-foot .ghost-text { font-size: 64px; }
+  h1 { font-size: 22px; }
+}
+.top-hack { display: flex; align-items: center; color: rgba(255, 255, 255, .78); }
+@media (max-width: 1180px) { .top-hack { display: none; } }
+
+/* Компоновка входа: планета в правом верхнем углу, контурный текст обрезан снизу */
+.login-wrap { grid-template-columns: 1.3fr 1fr; }
+.login-side { padding-bottom: 120px; }
+.login-side > *:not(.orbit):not(.ghost-text) { z-index: 1; }
+.orbit { right: -110px; top: -130px; bottom: auto; width: 420px; height: 420px; opacity: .95; }
+.login-side .ghost-text { left: 48px; bottom: -22px; font-size: 104px; }
+.login-hero { max-width: 560px; }

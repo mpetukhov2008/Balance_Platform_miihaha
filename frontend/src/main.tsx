@@ -6,10 +6,12 @@ import { AuthProvider } from "./auth";
 import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "@fontsource-variable/manrope";
+import "@fontsource-variable/unbounded";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/components.css";
 import "./styles/report.css";
+import "./styles/hack.css";
 
 function Root() {
   const [api, setApi] = useState<ApiClient | null>(null);
