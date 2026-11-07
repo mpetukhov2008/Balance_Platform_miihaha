@@ -1,0 +1,51 @@
+name: Compose scenario
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', 'frontend/**', 'infra/**', 'compose.yaml', '.env.example', '.dockerignore', 'scripts/**', '.github/workflows/compose.yml']
+  pull_request:
+    paths: ['backend/**', 'frontend/**', 'infra/**', 'compose.yaml', '.env.example', '.dockerignore', 'scripts/**', '.github/workflows/compose.yml']
+jobs:
+  full-scenario:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      POSTGRES_PASSWORD: ci-only-postgres-password
+      SCENARIO_PASSWORD: ci-only-scenario-password
+      APP_PUBLIC_URL: http://localhost:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.lock.txt
+      - run: docker compose --profile tools build
+      - run: docker compose up -d db api worker
+      - name: Wait for API and create test accounts
+        run: |
+          python - <<'PY'
+          import time
+          import httpx
+          deadline = time.monotonic() + 90
+          while time.monotonic() < deadline:
+              try:
+                  httpx.get("http://localhost:8000/api/v1/health", timeout=3).raise_for_status()
+                  break
+              except httpx.HTTPError:
+                  time.sleep(1)
+          else:
+              raise RuntimeError("API unavailable")
+          PY
+          printf '%s\n' "$SCENARIO_PASSWORD" | docker compose exec -T api python -m backend.manage create-user scenario
+          printf '%s\n' "$SCENARIO_PASSWORD" | docker compose exec -T api python -m backend.manage create-user other
+      - run: python scripts/verify_scenario.py --username scenario --other-username other --dataset full
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compose-scenario-result
+          path: runtime/scenario-verification.json
+          if-no-files-found: ignore
+      - run: docker compose logs --tail 150 api worker
+        if: failure()
+      - run: docker compose down
+        if: always()

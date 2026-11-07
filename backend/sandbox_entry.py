@@ -40,4 +40,13 @@ def execute(payload):
         return {"error": f"{type(exc).__name__}: {exc}", "stdout": out.getvalue(), "stderr": err.getvalue()}
 
 if __name__ == "__main__":
-    json.dump(execute(json.load(sys.stdin)), sys.stdout, ensure_ascii=False, allow_nan=False)
+    # Docker uses unbuffered stdout. Batch JSON chunks instead of emitting millions
+    # of tiny writes through the attach/logging stream for the full dataset.
+    result = execute(json.load(sys.stdin))
+    output = io.BufferedWriter(sys.stdout.buffer, buffer_size=262144)
+    try:
+        for chunk in json.JSONEncoder(ensure_ascii=False, allow_nan=False).iterencode(result):
+            output.write(chunk.encode("utf-8"))
+        output.flush()
+    finally:
+        output.detach()  # Keep the standard stream open for interpreter shutdown.

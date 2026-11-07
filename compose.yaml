@@ -26,6 +26,7 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       EXECUTION_MODE: docker
       RUNNER_IMAGE: balance-runner:local
+      SCRIPT_TIMEOUT: ${SCRIPT_TIMEOUT:-180}
       AI_API_URL: ${AI_API_URL:-}
       AI_PROVIDER: ${AI_PROVIDER:-openai-compatible}
       AI_FOLDER_ID: ${AI_FOLDER_ID:-}
@@ -34,7 +35,7 @@ services:
     ports:
       - 127.0.0.1:8000:8000
     volumes:
-      - ${DATA_DIR:-./runtime/empty-data}:/datasets:ro
+      - ${DATA_DIR:-./Исходники/data/RUN-20260827-0001/RESULTS}:/datasets:ro
     depends_on:
       db:
         condition: service_healthy
@@ -46,7 +47,7 @@ services:
     environment: *app-env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${DATA_DIR:-./runtime/empty-data}:/datasets:ro
+      - ${DATA_DIR:-./Исходники/data/RUN-20260827-0001/RESULTS}:/datasets:ro
     depends_on:
       db:
         condition: service_healthy

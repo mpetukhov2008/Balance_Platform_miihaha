@@ -1,6 +1,7 @@
 .git
 .venv
 .env
+team-local.env
 runtime
 data
 Исходники/data

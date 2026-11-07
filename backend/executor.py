@@ -38,7 +38,7 @@ def execute(payload):
                     pass
             writer=threading.Thread(target=feed,daemon=True)
             writer.start()
-            deadline=time.monotonic()+int(os.environ.get("SCRIPT_TIMEOUT","60"))
+            deadline=time.monotonic()+int(os.environ.get("SCRIPT_TIMEOUT","180"))
             limit=int(os.environ.get("SCRIPT_OUTPUT_LIMIT","536870912"))
             try:
                 while process.poll() is None:

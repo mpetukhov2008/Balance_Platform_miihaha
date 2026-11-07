@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .env
+team-local.env
 runtime/
 data/
 Исходники/data/

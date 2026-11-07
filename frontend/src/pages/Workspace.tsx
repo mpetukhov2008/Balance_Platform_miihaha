@@ -101,7 +101,7 @@ export function WorkspacePage() {
     <>
       <PageHead
         title="Рабочая область Python"
-        sub="Код исполняется только на сервере в изолированном исполнителе. Браузер Python не выполняет."
+        sub="Код выполняется на сервере. Результаты и вывод появятся ниже."
         actions={
           <div className="row">
             <select className="select" style={{ width: "auto" }} value="" onChange={(e) => e.target.value && nav(`/workspace?kind=${e.target.value}`)} aria-label="Создать скрипт">
