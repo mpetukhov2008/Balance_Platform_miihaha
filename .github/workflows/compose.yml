@@ -2,9 +2,9 @@ name: Compose scenario
 on:
   push:
     branches: [main]
-    paths: ['backend/**', 'frontend/**', 'infra/**', 'compose.yaml', '.env.example', 'scripts/**', '.github/workflows/compose.yml']
+    paths: ['backend/**', 'frontend/**', 'infra/**', 'compose.yaml', '.env.example', '.dockerignore', 'scripts/**', '.github/workflows/compose.yml']
   pull_request:
-    paths: ['backend/**', 'frontend/**', 'infra/**', 'compose.yaml', '.env.example', 'scripts/**', '.github/workflows/compose.yml']
+    paths: ['backend/**', 'frontend/**', 'infra/**', 'compose.yaml', '.env.example', '.dockerignore', 'scripts/**', '.github/workflows/compose.yml']
 jobs:
   full-scenario:
     runs-on: ubuntu-latest

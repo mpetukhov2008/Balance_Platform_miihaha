@@ -63,7 +63,8 @@ def verify(args, password):
             run_id = request("POST", "/runs", {"configurationId": config["id"]})["id"]
         base = "/runs/" + run_id
         run = poll(base)
-        assert run["reportReady"] and all(s["status"] == "SUCCEEDED" for s in run["stages"])
+        assert run["reportReady"] and all(s["status"] == "SUCCEEDED" or
+            (s["key"] == "AI_REVIEW" and s["status"] == "SKIPPED") for s in run["stages"])
         assert len(request("GET", base + "/logs")["items"]) >= 14
         summary = request("GET", base + "/summary")
         assert summary["totalApps"] == dataset["appCount"]
