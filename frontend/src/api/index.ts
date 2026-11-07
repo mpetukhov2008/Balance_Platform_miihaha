@@ -7,7 +7,7 @@ export type { ApiClient } from "./client";
 
 /** Реальный API — по умолчанию. Демо включается только явно: VITE_USE_MOCK_API=true. */
 export async function createApiClient(): Promise<ApiClient> {
-  if (import.meta.env.VITE_USE_MOCK_API === "true") {
+  if (String(import.meta.env.VITE_USE_MOCK_API ?? "").trim().toLowerCase() === "true") {
     const { MockApiClient } = await import("./mock");
     return new MockApiClient();
   }

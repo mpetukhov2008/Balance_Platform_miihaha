@@ -6,6 +6,7 @@ import { dateTime, ms, num, STAGE_LABEL } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import { pivotLink } from "./PivotView";
 import { useRun } from "./RunPage";
+import { loadAllChecks } from "./ChecksView";
 
 function Kpi({ label, value, of, foot, tone }: { label: string; value: number | null; of?: number | null; foot?: React.ReactNode; tone?: string }) {
   const share = value !== null && of ? value / of : null;
@@ -64,7 +65,7 @@ export function SummaryView() {
   const { run } = useRun();
   const api = useApi();
   const summary = useAsync(() => api.summary(run.id), [run.id]);
-  const checks = useAsync(() => api.checkResults(run.id, 1, 200), [run.id]);
+  const checks = useAsync(() => loadAllChecks(api, run.id), [run.id]);
 
   return (
     <Async state={summary} label="Загружаем сводку…">
@@ -99,6 +100,8 @@ export function SummaryView() {
                     <ErrorAlert error={checks.error} onRetry={checks.reload} compact />
                   ) : !checks.data ? (
                     <div className="skeleton" style={{ height: 80 }} />
+                  ) : !checks.data.complete ? (
+                    <div className="muted">Отчёт загружен частично ({num(checks.data.items.length)} из {num(checks.data.total)} строк), итоги FAIL/PASS не показываются.</div>
                   ) : (
                     <div className="stack">
                       <div className="row" style={{ gap: 18 }}>

@@ -7,6 +7,7 @@ import { keyLabel, num } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import type { CellContext } from "./PivotView";
 import { useRun } from "./RunPage";
+import { loadAllChecks } from "./ChecksView";
 
 export function ApplicationsView() {
   const { run } = useRun();
@@ -20,7 +21,7 @@ export function ApplicationsView() {
   const cell = (loc.state as { cell?: CellContext; back?: string } | null)?.cell;
   const back = (loc.state as { back?: string } | null)?.back;
   const apps = useAsync(() => api.applications(run.id, { drilldownToken: token, checkRowId: checkRow, page, pageSize: 50 }), [run.id, token, checkRow, page]);
-  const checks = useAsync(() => (checkRow ? api.checkResults(run.id, 1, 200) : Promise.resolve(undefined)), [run.id, checkRow]);
+  const checks = useAsync(() => (checkRow ? loadAllChecks(api, run.id) : Promise.resolve(undefined)), [run.id, checkRow]);
   const checkRowData = checks.data?.items.find((c) => c.rowId === checkRow);
   const expired = apps.error instanceof ApiError && apps.error.isDrilldownExpired;
 

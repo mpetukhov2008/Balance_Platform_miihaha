@@ -5,13 +5,14 @@ import { Icon } from "../components/Icon";
 import { Async, Empty, PageHead, Pager, StatusBadge } from "../components/ui";
 import { dateTime, duration } from "../lib/format";
 import { useAsync, usePolling } from "../lib/hooks";
+import { fetchAllPages } from "../lib/pages";
 
 export function RunsPage() {
   const api = useApi();
   const nav = useNavigate();
   const [page, setPage] = useState(1);
   const runs = useAsync(() => api.runs(page, 50), [page]);
-  const configs = useAsync(() => api.configurations(1, 200), []);
+  const configs = useAsync(() => fetchAllPages(api.configurations), []);
   const active = !!runs.data?.items.some((r) => r.status === "QUEUED" || r.status === "RUNNING");
   usePolling(() => api.runs(page, 50).then(runs.setData).catch(() => {}), active, 1500);
   const cfgName = (id: string) => configs.data?.items.find((c) => c.id === id)?.name;

@@ -55,7 +55,7 @@ function ColumnHeaders({ p, rowSpan }: { p: PivotResult; rowSpan: number }) {
   );
 }
 
-function PivotTable({ p, onCell }: { p: PivotResult; onCell: (r: number, c: number, token: string, value: number) => void }) {
+function PivotTable({ p, onCell, disabled }: { p: PivotResult; onCell: (r: number, c: number, token: string, value: number) => void; disabled: boolean }) {
   const grid = useMemo(() => {
     const m = new Map<string, { value: number; token: string | null }>();
     p.cells.forEach((c) => m.set(`${c.rowIndex}:${c.columnIndex}`, { value: c.value, token: c.drilldownToken }));
@@ -87,7 +87,7 @@ function PivotTable({ p, onCell }: { p: PivotResult; onCell: (r: number, c: numb
                     {!c ? (
                       <span className="zero">·</span>
                     ) : c.token ? (
-                      <button onClick={() => onCell(ri, ci, c.token!, c.value)} title="Открыть заявки этой ячейки">{num(c.value)}</button>
+                      <button disabled={disabled} onClick={() => onCell(ri, ci, c.token!, c.value)} title={disabled ? "Сводная пересчитывается" : "Открыть заявки этой ячейки"}>{num(c.value)}</button>
                     ) : (
                       num(c.value)
                     )}
@@ -111,18 +111,24 @@ export function PivotView() {
   const dims = useAsync(() => api.dimensions(run.id), [run.id]);
   const query = { rows: layout.rows, columns: layout.columns, filters: effectiveFilters(layout.filters), measure: "SUM_CNT" as const, page: layout.page, pageSize: layout.pageSize };
   const qKey = JSON.stringify(query);
-  const pivot = useAsync(() => api.pivot(run.id, query), [run.id, qKey]);
+  // Ответ хранится вместе со снимком своего запроса: подписи и token ячейки всегда из одного ответа.
+  const pivot = useAsync(async () => {
+    const snap = { query, search: search.toString() };
+    return { ...snap, result: await api.pivot(run.id, snap.query) };
+  }, [run.id, qKey]);
+  const updating = pivot.loading && !!pivot.data;
   const change = (l: PivotLayout) => setSearch(layoutToSearch(l));
 
-  function openCell(p: PivotResult, ri: number, ci: number, token: string, value: number) {
+  function openCell(snap: { query: typeof query; search: string }, p: PivotResult, ri: number, ci: number, token: string, value: number) {
+    if (updating) return;
     const ctx: CellContext = {
       rows: p.rowFields.map((f, i) => [f, p.rowKeys[ri][i]]),
       columns: p.columnFields.map((f, i) => [f, p.columnKeys[ci][i]]),
-      filters: query.filters,
+      filters: snap.query.filters,
       value,
       measure: p.measure.label,
     };
-    nav(`../apps?token=${encodeURIComponent(token)}`, { state: { cell: ctx, back: `pivot?${search.toString()}` } });
+    nav(`../apps?token=${encodeURIComponent(token)}`, { state: { cell: ctx, back: `pivot?${snap.search}` } });
   }
 
   if (dims.error) return <ErrorAlert error={dims.error} onRetry={dims.reload} />;
@@ -143,8 +149,9 @@ export function PivotView() {
           <div style={{ padding: 16 }}><ErrorAlert error={pivot.error} onRetry={pivot.reload} /></div>
         ) : (
           <Async state={pivot} label="Считаем сводную на сервере…">
-            {(p) => (
-              <>
+            {({ result: p, ...snap }) => (
+              <div aria-busy={updating} className={updating ? "pv-updating" : undefined} data-testid="pivot-result">
+                {updating && <div className="pv-updating-note"><div className="spinner" /> Пересчитываем по новой раскладке — ячейки временно недоступны</div>}
                 <div className="card-head">
                   <div>
                     <h2>{p.measure.label}</h2>
@@ -154,9 +161,9 @@ export function PivotView() {
                   </div>
                   <span className="muted small nowrap">{num(p.totalRows)} групп строк</span>
                 </div>
-                {p.cells.length === 0 ? <div className="state">Нет фактов под выбранные фильтры</div> : <PivotTable p={p} onCell={(r, c, t, v) => openCell(p, r, c, t, v)} />}
+                {p.cells.length === 0 ? <div className="state">Нет фактов под выбранные фильтры</div> : <PivotTable p={p} disabled={updating} onCell={(r, c, t, v) => openCell(snap, p, r, c, t, v)} />}
                 <Pager page={p.page} pageSize={p.pageSize} total={p.totalRows} onPage={(pg) => change({ ...layout, page: pg })} />
-              </>
+              </div>
             )}
           </Async>
         )}

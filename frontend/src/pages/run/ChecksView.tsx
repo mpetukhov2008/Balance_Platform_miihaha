@@ -1,13 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useApi } from "../../api";
-import type { CheckExecution, CheckResult } from "../../api/types";
+import { useApi, type ApiClient } from "../../api";
+import type { CheckExecution, CheckResult, CheckResultsPage } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { JsonParams } from "../../components/JsonParams";
-import { Async, ErrorAlert, SourceBadge } from "../../components/ui";
+import { Async, ErrorAlert, Pager, SourceBadge } from "../../components/ui";
 import { num } from "../../lib/format";
 import { useAsync, useTrackedJob } from "../../lib/hooks";
+import { fetchAllPages } from "../../lib/pages";
 import { useRun } from "./RunPage";
+
+/** Весь отчёт проверок постранично; итоги FAIL/PASS считаются только по полному набору. */
+export function loadAllChecks(api: ApiClient, runId: string) {
+  return fetchAllPages<CheckResult, CheckResultsPage>((p, ps) => api.checkResults(runId, p, ps), { revision: (r) => r.reportRevision });
+}
+
+/** Каталог проверок целиком, а не только первая страница. */
+export function loadAllCheckScripts(api: ApiClient) {
+  return fetchAllPages((p, ps) => api.scripts("CHECK", p, ps));
+}
+
+const TABLE_PAGE = 50;
 
 /** METRIC без метаданных не форматируется как процент: выводим как вернул сервер. */
 function Metric({ v }: { v: CheckResult["METRIC"] }) {
@@ -17,7 +30,7 @@ function Metric({ v }: { v: CheckResult["METRIC"] }) {
 
 function AddCheck({ runId, onDone }: { runId: string; onDone: () => void }) {
   const api = useApi();
-  const scripts = useAsync(() => api.scripts("CHECK", 1, 200), []);
+  const scripts = useAsync(() => loadAllCheckScripts(api), []);
   const [scriptId, setScriptId] = useState("");
   const [params, setParams] = useState<Record<string, unknown>>({});
   const [valid, setValid] = useState(true);
@@ -67,7 +80,7 @@ function AddCheck({ runId, onDone }: { runId: string; onDone: () => void }) {
             </select>
             {cur && <span className="muted small">CHECK.id: {cur.checkId ?? "определит сервер"}</span>}
           </label>
-          <JsonParams value={params} onChange={setParams} onValidity={setValid} rows={3} />
+          <JsonParams value={params} onChange={setParams} onValidity={setValid} resetKey={scriptId} rows={3} />
         </div>
       )}
       <div className="row">
@@ -98,40 +111,72 @@ export function ChecksView() {
   const api = useApi();
   const [search] = useSearchParams();
   const focus = search.get("rowId");
-  const res = useAsync(() => api.checkResults(run.id, 1, 200), [run.id]);
+  const res = useAsync(() => loadAllChecks(api, run.id), [run.id]);
   const [onlyFail, setOnlyFail] = useState(false);
   const [hideLow, setHideLow] = useState(false);
+  const [page, setPage] = useState(1);
   const focusRef = useRef<HTMLTableRowElement>(null);
+  const all = res.data?.items ?? [];
+  const items = all.filter((c) => (!onlyFail || c.RESULT === "FAIL") && (!hideLow || c.CONFIDENCE === "HIGH"));
+  const focusIndex = focus ? items.findIndex((c) => c.rowId === focus) : -1;
+
+  // Переход по ?rowId= открывает страницу, на которой находится строка, даже если она не первая.
   useEffect(() => {
-    focusRef.current?.scrollIntoView({ block: "center" });
-  }, [res.data]);
+    if (focusIndex >= 0) setPage(Math.floor(focusIndex / TABLE_PAGE) + 1);
+  }, [focusIndex, res.data]);
+  useEffect(() => {
+    focusRef.current?.scrollIntoView?.({ block: "center" });
+  }, [page, res.data]);
+  useEffect(() => {
+    setPage(1);
+  }, [onlyFail, hideLow]);
+
+  const pageItems = items.slice((page - 1) * TABLE_PAGE, page * TABLE_PAGE);
+  const focusMissing = !!focus && !!res.data && res.data.complete && all.every((c) => c.rowId !== focus);
 
   return (
     <div className="stack" style={{ gap: 16 }}>
       <section className="card">
         <Async state={res} label="Загружаем отчёт проверок…">
           {(d) => {
-            const items = d.items.filter((c) => (!onlyFail || c.RESULT === "FAIL") && (!hideLow || c.CONFIDENCE === "HIGH"));
             const fails = d.items.filter((c) => c.RESULT === "FAIL").length;
+            const passes = d.items.length - fails;
             return (
               <>
                 <div className="card-head">
                   <div>
                     <h2>Единый отчёт проверок</h2>
-                    <div className="hint">{num(d.total)} строк · FAIL {fails} · ревизия отчёта {d.reportRevision}. LOW — мало срабатываний, показано бледно.</div>
+                    <div className="hint" data-testid="checks-totals">
+                      {num(d.total)} строк · FAIL {d.complete ? fails : "—"} · PASS {d.complete ? passes : "—"} · ревизия отчёта {d.reportRevision}. LOW — мало срабатываний, показано бледно.
+                    </div>
                   </div>
                   <div className="row">
                     <label className="check small"><input type="checkbox" checked={onlyFail} onChange={(e) => setOnlyFail(e.target.checked)} /> только FAIL</label>
                     <label className="check small"><input type="checkbox" checked={hideLow} onChange={(e) => setHideLow(e.target.checked)} /> скрыть LOW</label>
                   </div>
                 </div>
+                {!d.complete && (
+                  <div className="alert alert-warn" style={{ margin: 12 }}>
+                    <Icon name="info" />
+                    <div>Загружено {num(d.items.length)} из {num(d.total)} строк — итоги FAIL/PASS не показываются, пока отчёт не загружен полностью.</div>
+                  </div>
+                )}
+                {focusMissing && (
+                  <div className="alert alert-warn" style={{ margin: 12 }}>
+                    <Icon name="info" />
+                    <div>Строка из ссылки не найдена: отчёт мог быть пересобран после новой проверки.</div>
+                  </div>
+                )}
+                {focus && focusIndex < 0 && !focusMissing && (onlyFail || hideLow) && (
+                  <div className="muted small" style={{ padding: "8px 20px" }}>Строка из ссылки скрыта текущими фильтрами.</div>
+                )}
                 <div className="table-wrap" style={{ maxHeight: "65vh" }}>
                   <table className="t" data-testid="checks-table">
                     <thead>
                       <tr><th>LABEL</th><th>SOURCE</th><th>ARGUMENT</th><th className="num">CNT</th><th className="num">TOTAL</th><th className="num">METRIC</th><th>RESULT</th><th>CONFIDENCE</th><th>Заявки</th></tr>
                     </thead>
                     <tbody>
-                      {items.map((c) => (
+                      {pageItems.map((c) => (
                         <tr key={c.rowId} ref={c.rowId === focus ? focusRef : undefined} className={`${c.CONFIDENCE === "LOW" ? "low" : ""} ${c.rowId === focus ? "selected" : ""}`}>
                           <td style={{ fontWeight: 550 }}>{c.LABEL}</td>
                           <td><SourceBadge source={c.SOURCE} /></td>
@@ -154,6 +199,7 @@ export function ChecksView() {
                     </tbody>
                   </table>
                 </div>
+                <Pager page={page} pageSize={TABLE_PAGE} total={items.length} onPage={setPage} />
               </>
             );
           }}

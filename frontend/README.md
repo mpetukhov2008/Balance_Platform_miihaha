@@ -4,7 +4,7 @@
 
 ## Запуск
 
-Нужен Node.js 20.19+ (проверено на 24.22). Команды выполняются из `frontend/`.
+Нужен Node.js 20.19+ (проверено на 24.22). Команды выполняются из `frontend/` и одинаковы для Windows, macOS и Linux.
 
 ```bash
 npm ci
@@ -16,8 +16,10 @@ Backend и worker запускаются по корневому README. Vite п
 Демонстрационный режим включается только явно:
 
 ```bash
-npm run dev:mock     # VITE_USE_MOCK_API=true
+npm run dev:mock     # vite --mode demo → .env.demo с VITE_USE_MOCK_API=true
 ```
+
+Команда одинаково работает в Windows (cmd и PowerShell), macOS и Linux: переменная берётся из `frontend/.env.demo`, а не из синтаксиса оболочки. Для разовой настройки без файла в PowerShell: `$env:VITE_USE_MOCK_API="true"; npm run dev`, в cmd: `set "VITE_USE_MOCK_API=true" && npm run dev`.
 
 В демо-режиме все данные искусственные, сверху висит полосатый баннер «Демонстрационные данные». Реальный режим никогда не переключается на демо при ошибке API.
 

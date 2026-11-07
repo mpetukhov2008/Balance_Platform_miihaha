@@ -75,7 +75,9 @@ describe("Отчёт проверок", () => {
     await screen.findByTestId("checks-table");
     const panel = await screen.findByTestId("add-check");
     await waitFor(() => expect((within(panel).getByRole("combobox") as HTMLSelectElement).value).toBe(s.id));
-    fireEvent.click(within(panel).getByText(/Выполнить и добавить в отчёт/));
+    const run1 = within(panel).getByRole("button", { name: /Выполнить и добавить/ }) as HTMLButtonElement;
+    await waitFor(() => expect(run1.disabled).toBe(false));
+    fireEvent.click(run1);
     await waitFor(() => expect(exec).toHaveBeenCalledWith(runId, { scriptId: s.id, params: {} }));
     await screen.findByText(/ревизия 2/, undefined, { timeout: 5000 });
     await waitFor(() => expect(within(screen.getByTestId("checks-table")).getByText("Моя проверка")).toBeTruthy());
@@ -87,7 +89,10 @@ describe("Отчёт проверок", () => {
     renderRun(api, `/runs/${runId}/checks`);
     const panel = await screen.findByTestId("add-check");
     await waitFor(() => expect((within(panel).getByRole("combobox") as HTMLSelectElement).value).toBe(s.id));
-    fireEvent.click(within(panel).getByText(/Выполнить и добавить в отчёт/));
+    // Кнопка становится доступной только после загрузки каталога и выбора проверки.
+    const run2 = within(panel).getByRole("button", { name: /Выполнить и добавить/ }) as HTMLButtonElement;
+    await waitFor(() => expect(run2.disabled).toBe(false));
+    fireEvent.click(run2);
     await screen.findByText(/Ошибка исполнения проверки/, undefined, { timeout: 5000 });
     expect(within(screen.getByTestId("checks-table")).queryByText("Сломанная")).toBeNull();
   }, 10000);

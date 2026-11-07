@@ -9,6 +9,7 @@ import { JsonParams } from "../components/JsonParams";
 import { ErrorAlert, Loading, PageHead } from "../components/ui";
 import { dateTime, KIND_LABEL } from "../lib/format";
 import { useAsync } from "../lib/hooks";
+import { fetchAllPages } from "../lib/pages";
 import { WorkspaceRun } from "./WorkspaceRun";
 
 type Draft = { name: string; kind: ScriptKind; code: string; params: Record<string, unknown> };
@@ -19,7 +20,7 @@ export function WorkspacePage() {
   const api = useApi();
   const nav = useNavigate();
   const copy = (useLocation().state as { copy?: Draft } | null)?.copy;
-  const scripts = useAsync(() => api.scripts(undefined, 1, 200), []);
+  const scripts = useAsync(() => fetchAllPages((p, ps) => api.scripts(undefined, p, ps)), []);
   const contracts = useAsync(() => api.scriptContracts(), []);
   const script = useAsync(() => (scriptId ? api.script(scriptId) : Promise.resolve(null)), [scriptId]);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -147,7 +148,7 @@ export function WorkspacePage() {
                 <div className="editor" data-testid="code-editor">
                   <CodeMirror value={draft.code} height="420px" theme={dark ? "dark" : "light"} extensions={[python()]} readOnly={readOnly} onChange={(code) => edit({ code })} basicSetup={{ tabSize: 4 }} />
                 </div>
-                <JsonParams value={draft.params} onChange={(params) => edit({ params })} onValidity={setValidParams} rows={4} label={readOnly ? "Параметры по умолчанию (переопределяются при запуске)" : "Параметры (JSON)"} />
+                <JsonParams value={draft.params} resetKey={scriptId ?? "new:" + draft.kind} onChange={(params) => edit({ params })} onValidity={setValidParams} rows={4} label={readOnly ? "Параметры по умолчанию (переопределяются при запуске)" : "Параметры (JSON)"} />
               </section>
               {contract && (
                 <details className="card card-pad">
@@ -162,7 +163,7 @@ export function WorkspacePage() {
                 </details>
               )}
               {cur || !readOnly ? (
-                cur ? <WorkspaceRun script={cur} params={draft.params} dirty={dirty} beforeRun={save} initialRunId={search.get("runId") ?? undefined} />
+                cur ? <WorkspaceRun script={cur} params={draft.params} paramsValid={validParams} dirty={dirty} beforeRun={save} initialRunId={search.get("runId") ?? undefined} />
                   : <div className="muted small">Сохраните скрипт, чтобы выполнить его на сервере.</div>
               ) : null}
             </>

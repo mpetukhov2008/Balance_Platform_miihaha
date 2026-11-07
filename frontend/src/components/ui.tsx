@@ -101,7 +101,13 @@ export function Loading({ label = "Загрузка…" }: { label?: string }) {
 export function Async<T>({ state, children, label }: { state: { data: T | undefined; error: unknown; loading: boolean; reload: () => void }; children: (d: T) => ReactNode; label?: string }) {
   if (state.error) return <ErrorAlert error={state.error} onRetry={state.reload} />;
   if (state.data === undefined) return <Loading label={label} />;
-  return <>{children(state.data)}</>;
+  // Пока идёт новый запрос, прежние данные видны, но недоступны для действий.
+  // Обёртка одна и та же в обоих состояниях, чтобы React не пересоздавал содержимое.
+  return (
+    <div className={state.loading ? "stale" : undefined} aria-busy={state.loading || undefined}>
+      {children(state.data)}
+    </div>
+  );
 }
 
 export function Pager({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (p: number) => void }) {

@@ -5,13 +5,14 @@ import { Icon } from "../components/Icon";
 import { Async, Empty, ErrorAlert, PageHead, Pager } from "../components/ui";
 import { dateTime } from "../lib/format";
 import { useAsync } from "../lib/hooks";
+import { fetchAllPages } from "../lib/pages";
 
 export function ConfigurationsPage() {
   const api = useApi();
   const nav = useNavigate();
   const [page, setPage] = useState(1);
   const cfgs = useAsync(() => api.configurations(page, 50), [page]);
-  const datasets = useAsync(() => api.datasets(), []);
+  const datasets = useAsync(() => fetchAllPages(api.datasets), []);
   const [starting, setStarting] = useState<string>();
   const [startError, setStartError] = useState<unknown>();
 

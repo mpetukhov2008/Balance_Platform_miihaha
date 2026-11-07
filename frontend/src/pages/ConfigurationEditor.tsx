@@ -7,6 +7,7 @@ import { JsonParams } from "../components/JsonParams";
 import { ErrorAlert, Loading, PageHead } from "../components/ui";
 import { KIND_LABEL } from "../lib/format";
 import { useAsync } from "../lib/hooks";
+import { fetchAllPages } from "../lib/pages";
 
 const DEFAULT_IDS: Record<string, string> = { NORMALIZE: "builtin-normalize", COMPARE: "builtin-compare", AGGREGATE: "builtin-aggregate" };
 
@@ -36,7 +37,7 @@ function ScriptPicker({ kind, scripts, binding, onChange, onValidity }: { kind: 
         </select>
       </label>
       {cur && <div className="muted small">Источник: {cur.sourceType === "FILE" ? `файл ${cur.filename}` : "рабочая область"} · контракт {cur.contractId}</div>}
-      <JsonParams value={binding.params} onChange={(params) => onChange({ ...binding, params })} onValidity={onValidity} rows={kind === "NORMALIZE" ? 9 : 3} />
+      <JsonParams value={binding.params} resetKey={binding.scriptId} onChange={(params) => onChange({ ...binding, params })} onValidity={onValidity} rows={kind === "NORMALIZE" ? 9 : 3} />
     </div>
   );
 }
@@ -45,8 +46,8 @@ export function ConfigurationEditor() {
   const { configId } = useParams();
   const api = useApi();
   const nav = useNavigate();
-  const datasets = useAsync(() => api.datasets(), []);
-  const scripts = useAsync(() => api.scripts(undefined, 1, 200), []);
+  const datasets = useAsync(() => fetchAllPages(api.datasets), []);
+  const scripts = useAsync(() => fetchAllPages((p, ps) => api.scripts(undefined, p, ps)), []);
   const existing = useAsync(() => (configId ? api.configuration(configId) : Promise.resolve(null)), [configId]);
   const [form, setForm] = useState<ConfigurationBody | null>(null);
   const [invalid, setInvalid] = useState<Record<string, boolean>>({});
@@ -86,6 +87,8 @@ export function ConfigurationEditor() {
 
   function toggleCheck(s: Script, on: boolean) {
     set({ checks: on ? [...form!.checks, { scriptId: s.id, params: { ...s.params } }] : form!.checks.filter((c) => c.scriptId !== s.id) });
+    // Ошибка JSON отключённой проверки не должна блокировать сохранение.
+    if (!on) setInvalid((v) => ({ ...v, ["check:" + s.id]: false }));
   }
 
   async function save(run: boolean) {
