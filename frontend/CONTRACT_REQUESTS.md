@@ -69,3 +69,5 @@
 - Без CSRF до входа, но с проверкой Origin (`ALLOWED_ORIGINS`), ограничением частоты по IP, хешем пароля как в `create-user` и тем же минимумом длины.
 **Для глобального сайта также:** `COOKIE_SECURE=true` и HTTPS, корректные `APP_PUBLIC_URL` и `ALLOWED_ORIGINS`, ограничение частоты входа (по RELEASE_STATUS — уже есть).
 **Экраны:** вход и регистрация.
+
+**Обновление:** Codex реализовал регистрацию в PR #7 (`GET /auth/options`, `POST /auth/register` → `{ok}`, 403 `REGISTRATION_DISABLED`, 409 `USERNAME_TAKEN`, пароль от 15 символов). Frontend переведён на этот контракт, предложение с `inviteCode` снято.

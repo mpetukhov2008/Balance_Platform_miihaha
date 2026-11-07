@@ -53,32 +53,41 @@ describe("Регистрация", () => {
     const api = new MockApiClient();
     renderApp(api, "/runs");
     fireEvent.click(await screen.findByRole("tab", { name: "Регистрация" }));
-    fireEvent.change(screen.getByLabelText(/^Имя пользователя/), { target: { value: "new_user" } });
-    fireEvent.change(screen.getByLabelText(/^Пароль/), { target: { value: "long-password-1" } });
-    fireEvent.change(screen.getByLabelText(/^Повторите пароль/), { target: { value: "long-password-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Создать аккаунт" }));
+    fireEvent.change(screen.getByLabelText("Имя пользователя"), { target: { value: "new_user" } });
+    fireEvent.change(screen.getByLabelText("Пароль"), { target: { value: "long-pass-phrase-15" } });
+    fireEvent.change(screen.getByLabelText("Повторите пароль"), { target: { value: "long-pass-phrase-15" } });
+    fireEvent.click(screen.getByRole("button", { name: "Зарегистрироваться" }));
     await screen.findByText("Запуски", { selector: "h1" });
   });
 
   it("если сервер не поддерживает регистрацию, честно говорит об этом", async () => {
     const api = new MockApiClient();
-    vi.spyOn(api, "register").mockRejectedValue(new ApiError(404, "NOT_FOUND", "Not Found"));
+    vi.spyOn(api, "register").mockRejectedValue(new ApiError(403, "REGISTRATION_DISABLED", "Самостоятельная регистрация отключена администратором."));
     renderApp(api, "/runs");
     fireEvent.click(await screen.findByRole("tab", { name: "Регистрация" }));
-    fireEvent.change(screen.getByLabelText(/^Имя пользователя/), { target: { value: "new_user" } });
-    fireEvent.change(screen.getByLabelText(/^Пароль/), { target: { value: "long-password-1" } });
-    fireEvent.change(screen.getByLabelText(/^Повторите пароль/), { target: { value: "long-password-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Создать аккаунт" }));
+    fireEvent.change(screen.getByLabelText("Имя пользователя"), { target: { value: "new_user" } });
+    fireEvent.change(screen.getByLabelText("Пароль"), { target: { value: "long-pass-phrase-15" } });
+    fireEvent.change(screen.getByLabelText("Повторите пароль"), { target: { value: "long-pass-phrase-15" } });
+    fireEvent.click(screen.getByRole("button", { name: "Зарегистрироваться" }));
     await screen.findByText(/регистрация на этом сервере закрыта/i);
+  });
+
+  it("если сервер выключил регистрацию, вкладка сразу сообщает об этом", async () => {
+    const api = new MockApiClient();
+    vi.spyOn(api, "registrationOptions").mockResolvedValue({ registrationEnabled: false, passwordMinLength: 15 });
+    renderApp(api, "/runs");
+    fireEvent.click(await screen.findByRole("tab", { name: "Регистрация" }));
+    await screen.findByText(/регистрация на этом сервере закрыта/i);
+    expect(screen.queryByRole("button", { name: "Зарегистрироваться" })).toBeNull();
   });
 
   it("не даёт создать аккаунт с коротким паролем или разными паролями", async () => {
     renderApp(new MockApiClient(), "/runs");
     fireEvent.click(await screen.findByRole("tab", { name: "Регистрация" }));
-    fireEvent.change(screen.getByLabelText(/^Имя пользователя/), { target: { value: "new_user" } });
-    fireEvent.change(screen.getByLabelText(/^Пароль/), { target: { value: "short" } });
-    fireEvent.change(screen.getByLabelText(/^Повторите пароль/), { target: { value: "other" } });
-    expect((screen.getByRole("button", { name: "Создать аккаунт" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Имя пользователя"), { target: { value: "new_user" } });
+    fireEvent.change(screen.getByLabelText("Пароль"), { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("Повторите пароль"), { target: { value: "other" } });
+    expect((screen.getByRole("button", { name: "Зарегистрироваться" }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("Пароли не совпадают")).toBeTruthy();
   });
 });

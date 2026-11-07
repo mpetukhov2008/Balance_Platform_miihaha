@@ -28,6 +28,9 @@ function builtin(idv: string, kind: Script["kind"], filename: string, params: Re
 }
 
 export class MockApiClient implements ApiClient {
+  registrationOptions: C["registrationOptions"] = async () => ({ registrationEnabled: true, passwordMinLength: 15 });
+  register: C["register"] = async () => ({ ok: true });
+  limits: C["limits"] = async () => ({ aiRequestsUsed: 0, aiRequestsLimit: 10, aiTokensUsed: 0, aiTokensLimit: 30000, resetTimezone: "UTC" });
   readonly mode = "mock" as const;
   onUnauthorized?: () => void;
   private user: { id: string; username: string } | null = null;
@@ -60,12 +63,6 @@ export class MockApiClient implements ApiClient {
   login: C["login"] = async (username, password) => {
     await wait();
     if (!username || !password) throw new ApiError(401, "INVALID_CREDENTIALS", "Неверное имя пользователя или пароль");
-    this.user = { id: "u-" + username, username };
-    return { user: this.user, csrfToken: "demo" };
-  };
-  register: C["register"] = async ({ username, password }) => {
-    await wait();
-    if (password.length < 10) throw new ApiError(422, "VALIDATION_ERROR", "Пароль должен содержать не менее 10 символов", { fields: { password: "Не менее 10 символов" } });
     this.user = { id: "u-" + username, username };
     return { user: this.user, csrfToken: "demo" };
   };

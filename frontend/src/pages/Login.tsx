@@ -9,9 +9,9 @@ import { Bracket, GhostTitle, HACK, Orbit, SupportLink } from "../components/Hac
 import { BRAND } from "../lib/brand";
 import { useTheme } from "../lib/theme";
 import { useTerms } from "../lib/mode";
+import { useAsync } from "../lib/hooks";
 
-const NAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
-const MIN_PASSWORD = 10;
+const NAME_RE = /^[A-Za-z0-9_.-]{3,40}$/;
 
 /** Сайт открыт по незащищённому HTTP не на локальной машине — пароль пойдёт открытым текстом. */
 function insecureOrigin() {
@@ -27,7 +27,7 @@ function PasswordField({ label, value, onChange, autoComplete, invalid, hint }: 
     <label className="field">
       <span>{label}</span>
       <span className="pw">
-        <input className={`input ${invalid ? "invalid" : ""}`} type={shown ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} onKeyUp={onKey} onKeyDown={onKey} required />
+        <input aria-label={label} className={`input ${invalid ? "invalid" : ""}`} type={shown ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} onKeyUp={onKey} onKeyDown={onKey} required />
         <button type="button" className="pw-eye" onClick={() => setShown((s) => !s)} aria-label={shown ? "Скрыть пароль" : "Показать пароль"} title={shown ? "Скрыть пароль" : "Показать пароль"}>
           <Icon name="eye" />
         </button>
@@ -42,7 +42,7 @@ function errorText(err: unknown, mode: "login" | "register") {
   if (!(err instanceof ApiError)) return null;
   if (err.status === 429) return "Слишком много попыток. Подождите немного и попробуйте снова.";
   if (mode === "login" && (err.status === 401 || err.status === 403)) return "Неверное имя пользователя или пароль.";
-  if (mode === "register" && (err.status === 404 || err.status === 405 || err.status === 501)) return "closed";
+  if (mode === "register" && (err.status === 404 || err.status === 405 || err.status === 501 || err.code === "REGISTRATION_DISABLED")) return "closed";
   if (mode === "register" && err.status === 409) return "Такое имя пользователя уже занято.";
   return null;
 }
@@ -56,10 +56,13 @@ export function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
-  const [invite, setInvite] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
-  const [closed, setClosed] = useState(false);
+  const [closedByServer, setClosedByServer] = useState(false);
+  // Настройки регистрации сообщает сервер; старый сервер без /auth/options — регистрация закрыта.
+  const options = useAsync(() => api.registrationOptions(), [api]);
+  const MIN_PASSWORD = options.data?.passwordMinLength ?? 15;
+  const closed = closedByServer || options.error !== undefined || options.data?.registrationEnabled === false;
 
   const nameOk = NAME_RE.test(username.trim());
   const pwOk = password.length >= MIN_PASSWORD;
@@ -72,9 +75,9 @@ export function Login() {
     setError(undefined);
     try {
       if (tab === "login") await login(username.trim(), password);
-      else await register(username.trim(), password, invite.trim() || undefined);
+      else await register(username.trim(), password);
     } catch (err) {
-      if (tab === "register" && errorText(err, "register") === "closed") setClosed(true);
+      if (tab === "register" && errorText(err, "register") === "closed") setClosedByServer(true);
       else setError(err);
     } finally {
       setBusy(false);
@@ -140,7 +143,7 @@ export function Login() {
               <div>Соединение не защищено (HTTP). Не вводите пароль, пока сайт не откроется по HTTPS.</div>
             </div>
           )}
-          {tab === "register" && closed ? (
+          {tab === "register" && closed && !options.loading ? (
             <div className="alert alert-info">
               <Icon name="info" />
               <div>
@@ -152,8 +155,8 @@ export function Login() {
             <>
               <label className="field">
                 <span>Имя пользователя</span>
-                <input className={`input ${tab === "register" && username && !nameOk ? "invalid" : ""}`} autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
-                {tab === "register" && <span className={username && !nameOk ? "err" : "muted small"}>3–32 символа: латинские буквы, цифры, точка, дефис, подчёркивание</span>}
+                <input aria-label="Имя пользователя" className={`input ${tab === "register" && username && !nameOk ? "invalid" : ""}`} autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} autoFocus required />
+                {tab === "register" && <span className={username && !nameOk ? "err" : "muted small"}>3–40 символов: латинские буквы, цифры, точка, дефис, подчёркивание</span>}
               </label>
               <PasswordField
                 label="Пароль"
@@ -161,28 +164,24 @@ export function Login() {
                 onChange={setPassword}
                 autoComplete={tab === "login" ? "current-password" : "new-password"}
                 invalid={tab === "register" && !!password && !pwOk}
-                hint={tab === "register" ? `Не менее ${MIN_PASSWORD} символов. Не используйте пароль от других сайтов.` : undefined}
+                hint={tab === "register" ? `Не менее ${MIN_PASSWORD} символов — подойдёт фраза из нескольких слов. Не используйте пароль от других сайтов.` : undefined}
               />
               {tab === "register" && (
                 <>
                   <PasswordField label="Повторите пароль" value={password2} onChange={setPassword2} autoComplete="new-password" invalid={!!password2 && !sameOk} hint={password2 && !sameOk ? "Пароли не совпадают" : undefined} />
-                  <label className="field">
-                    <span>Код приглашения <span className="muted">(если выдан)</span></span>
-                    <input className="input" autoComplete="off" value={invite} onChange={(e) => setInvite(e.target.value)} />
-                  </label>
                 </>
               )}
             </>
           )}
           {error !== undefined && (friendly ? <div className="alert alert-bad" role="alert"><Icon name="alert" /><div>{friendly}</div></div> : <ErrorAlert error={error} compact />)}
-          {!(tab === "register" && closed) && (
+          {!(tab === "register" && closed && !options.loading) && (
             <button className="btn btn-primary" style={{ height: 48 }} disabled={busy || (tab === "login" ? !username || !password : !canRegister)}>
-              {busy ? (tab === "login" ? "Входим…" : "Создаём…") : tab === "login" ? "Войти" : "Создать аккаунт"}
+              {busy ? (tab === "login" ? "Входим…" : "Создаём…") : tab === "login" ? "Войти" : "Зарегистрироваться"}
             </button>
           )}
           <div className="muted small">
             {tab === "login" ? (
-              <>Нет аккаунта? <button type="button" className="linklike" onClick={() => switchTab("register")}>Зарегистрируйтесь</button> или напишите в техподдержку.</>
+              <>Нет аккаунта? <button type="button" className="linklike" onClick={() => switchTab("register")}>Создать аккаунт</button> или напишите в техподдержку.</>
             ) : (
               <>Уже есть аккаунт? <button type="button" className="linklike" onClick={() => switchTab("login")}>Войти</button></>
             )}
