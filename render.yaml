@@ -1,0 +1,67 @@
+databases:
+  - name: balance-platform-db
+    plan: free # или starter, если нужен больший объем
+    databaseName: balance_db
+    user: balance_user
+
+services:
+  # 1. Backend API (Web Service)
+  - type: web
+    name: balance-api
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r backend/requirements.lock.txt"
+    startCommand: "uvicorn backend.api:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: balance-platform-db
+          property: connectionString
+      - key: APP_PUBLIC_URL
+        sync: false # Вы впишете это значение вручную после создания фронтенда
+      - key: AI_PROVIDER
+        value: yandex
+      - key: AI_FOLDER_ID
+        sync: false # Секрет, введете в дашборде
+      - key: AI_API_KEY
+        sync: false # Секрет, введете в дашборде
+    healthCheckPath: /api/v1/health # Важная вещь для Render, чтобы проверять, что сервис жив
+
+  # 2. Background Worker (для обработки задач)
+  - type: worker
+    name: balance-worker
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r backend/requirements.lock.txt"
+    startCommand: "python -m backend.worker"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: balance-platform-db
+          property: connectionString
+      - key: EXECUTION_MODE
+        value: trusted-local # На Render нет Docker-in-Docker, поэтому только этот режим
+      - key: AI_PROVIDER
+        value: yandex
+      - key: AI_FOLDER_ID
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+
+  # 3. Frontend (Статический сайт)
+  - type: web
+    name: balance-frontend
+    runtime: static
+    plan: free
+    buildCommand: "npm --prefix frontend ci && npm --prefix frontend run build"
+    staticPublishPath: "./frontend/dist" # Убедитесь, что Vite собирает в эту папку
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: balance-api
+          property: host
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
