@@ -31,10 +31,16 @@ def verify(args, password):
 
         def poll(path):
             deadline = time.monotonic() + args.timeout
+            previous = None
             while time.monotonic() < deadline:
                 item = request("GET", path)
+                state = (item["status"], tuple(s["key"] for s in item.get("stages", []) if s["status"] == "RUNNING"))
+                if state != previous:
+                    print(json.dumps({"operation": path, "status": state[0], "stages": state[1]}), flush=True)
+                    previous = state
                 if item["status"] not in ("QUEUED", "RUNNING", "PENDING"):
-                    assert item["status"] == "SUCCEEDED", item.get("error") or item["status"]
+                    failed = [s["key"] for s in item.get("stages", []) if s["status"] == "FAILED"]
+                    assert item["status"] == "SUCCEEDED", f"{failed}: {item.get('error') or item['status']}"
                     return item
                 time.sleep(1)
             raise TimeoutError("Worker did not finish: " + path)
