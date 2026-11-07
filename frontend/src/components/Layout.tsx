@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useApi } from "../api";
 import type { MockApiClient } from "../api/mock";
@@ -6,27 +5,7 @@ import { useAuth } from "../auth";
 import { Icon } from "./Icon";
 import { BrandLogo } from "./BrandLogo";
 import { AppFooter, HackChip } from "./Hack";
-
-function useTheme() {
-  const [theme, setTheme] = useState<string>(() => {
-    try {
-      return localStorage.getItem("bp-theme") ?? "auto";
-    } catch {
-      return "auto";
-    }
-  });
-  useEffect(() => {
-    if (theme === "auto") document.documentElement.removeAttribute("data-theme");
-    else document.documentElement.setAttribute("data-theme", theme);
-    try {
-      localStorage.setItem("bp-theme", theme);
-    } catch {
-      /* тема — только удобство */
-    }
-  }, [theme]);
-  const dark = theme === "dark" || (theme === "auto" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-  return { dark, toggle: () => setTheme(dark ? "light" : "dark") };
-}
+import { useTheme } from "../lib/theme";
 
 export function DemoBanner() {
   const api = useApi();

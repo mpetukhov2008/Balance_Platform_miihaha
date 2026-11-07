@@ -5,11 +5,13 @@ import { DemoBanner } from "../components/Layout";
 import { ErrorAlert } from "../components/ui";
 import { Icon } from "../components/Icon";
 import { BrandLogo } from "../components/BrandLogo";
-import { Bracket, HACK, Orbit } from "../components/Hack";
+import { Bracket, HACK, Orbit, SupportLink } from "../components/Hack";
+import { useTheme } from "../lib/theme";
 
 export function Login() {
   const { login, expired } = useAuth();
   const api = useApi();
+  const { dark, toggle } = useTheme();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -52,10 +54,18 @@ export function Login() {
               <li><Icon name="shield" /> Единый отчёт PASS / FAIL по проверкам на Python</li>
             </ul>
           </div>
-          <div className="muted small">Проект хакатона {HACK.name} · пользователей создаёт администратор сервера.</div>
+          <div className="login-foot">
+            <SupportLink />
+            <div className="muted small">Проект хакатона {HACK.name} · пользователей создаёт администратор сервера.</div>
+          </div>
         </div>
         <form className="login-card card" onSubmit={submit}>
-          <h2 style={{ fontSize: 20 }}>Вход</h2>
+          <div className="row spread">
+            <h2 style={{ fontSize: 20 }}>Вход</h2>
+            <button type="button" className="btn btn-ghost btn-sm btn-icon" onClick={toggle} title={dark ? "Светлая тема" : "Тёмная тема"} aria-label="Переключить тему">
+              <Icon name={dark ? "sun" : "moon"} />
+            </button>
+          </div>
           {expired && (
             <div className="alert alert-warn">
               <Icon name="info" />
