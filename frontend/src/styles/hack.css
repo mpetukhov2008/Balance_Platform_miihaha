@@ -96,3 +96,9 @@ a.bracket:hover { color: var(--accent); text-decoration: none; }
 .orbit { right: -110px; top: -130px; bottom: auto; width: 420px; height: 420px; opacity: .95; }
 .login-side .ghost-text { left: 48px; bottom: -22px; font-size: 104px; }
 .login-hero { max-width: 560px; }
+
+/* Марс внутри орбиты */
+.orbit { display: grid; place-items: center; }
+.orbit > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.mars { position: relative; border-radius: 50%; filter: drop-shadow(0 0 28px rgba(217, 119, 87, .22)); }
+.orbit { right: -170px; top: -170px; width: 520px; height: 520px; }

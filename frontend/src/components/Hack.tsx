@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Mars } from "./Mars";
 
 export const HACK = {
   name: "Nuclear IT Hack",
@@ -30,28 +31,23 @@ export function HackChip() {
   );
 }
 
-/** Оранжевая «планета» с вращающейся орбитальной надписью. */
+/** Вращающийся Марс с орбитальной надписью. */
 export function Orbit() {
   const text = `BALANCE PLATFORM · ${HACK.name.toUpperCase()} · CODING WITH CLARITY · `;
   return (
-    <svg className="orbit" viewBox="0 0 560 560" aria-hidden="true">
-      <defs>
-        <radialGradient id="bp-planet" cx="38%" cy="34%" r="70%">
-          <stop offset="0%" stopColor="#f3b79c" />
-          <stop offset="28%" stopColor="#d97757" />
-          <stop offset="62%" stopColor="#6b2d17" />
-          <stop offset="100%" stopColor="#120806" />
-        </radialGradient>
-        <path id="bp-orbit-path" d="M280,280 m-238,0 a238,238 0 1,1 476,0 a238,238 0 1,1 -476,0" />
-      </defs>
-      <circle className="planet" cx="280" cy="280" r="190" />
-      <circle cx="280" cy="280" r="190" fill="none" stroke="rgba(255,255,255,.08)" />
-      <g className="spin">
-        <text className="ring-text">
-          <textPath href="#bp-orbit-path">{text.repeat(2)}</textPath>
-        </text>
-      </g>
-    </svg>
+    <div className="orbit" aria-hidden="true">
+      <Mars size={360} />
+      <svg viewBox="0 0 560 560">
+        <defs>
+          <path id="bp-orbit-path" d="M280,280 m-238,0 a238,238 0 1,1 476,0 a238,238 0 1,1 -476,0" />
+        </defs>
+        <g className="spin">
+          <text className="ring-text">
+            <textPath href="#bp-orbit-path">{text.repeat(2)}</textPath>
+          </text>
+        </g>
+      </svg>
+    </div>
   );
 }
 
