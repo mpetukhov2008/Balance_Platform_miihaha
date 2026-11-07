@@ -1,9 +1,7 @@
 import argparse
 import getpass
-import secrets
-from pathlib import Path
-from backend.store import Store, uid
-from backend.api import password_hash
+from backend.store import Store
+from backend.api import create_user
 
 def main():
     parser = argparse.ArgumentParser()
@@ -16,8 +14,10 @@ def main():
     store = Store()
     if any(u["username"] == args.username for u in store.all("user", None)):
         parser.error("User already exists")
-    salt = secrets.token_hex(16)
-    store.put("user", "system", {"id":uid(),"username":args.username,"salt":salt,"passwordHash":password_hash(password,salt)})
+    try:
+        create_user(store, args.username, password)
+    except ValueError:
+        parser.error('User already exists')
     print("User created")
 
 if __name__ == "__main__":

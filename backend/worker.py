@@ -9,6 +9,8 @@ def main():
     load_local_env()
     Path("runtime").mkdir(exist_ok=True)
     store = Store()
+    from backend.security import validate_runtime
+    validate_runtime(store)
     service = Service(store)
     # One worker in v0.1; fail abandoned RUNNING jobs instead of silently hanging.
     for job in store.all("job", None):

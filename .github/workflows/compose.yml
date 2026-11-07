@@ -13,6 +13,7 @@ jobs:
       POSTGRES_PASSWORD: ci-only-postgres-password
       SCENARIO_PASSWORD: ci-only-scenario-password
       APP_PUBLIC_URL: http://localhost:8000
+      ALLOW_REGISTRATION: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,7 +39,29 @@ jobs:
           PY
           printf '%s\n' "$SCENARIO_PASSWORD" | docker compose exec -T api python -m backend.manage create-user scenario
           printf '%s\n' "$SCENARIO_PASSWORD" | docker compose exec -T api python -m backend.manage create-user other
+      - name: Self-service registration against real API
+        run: |
+          python - <<'PY'
+          import os
+          import httpx
+          with httpx.Client(base_url='http://localhost:8000/api/v1') as c:
+              assert c.get('/auth/options').json()['registrationEnabled']
+              body = {'username': 'self-service', 'password': os.environ['SCENARIO_PASSWORD']}
+              assert c.post('/auth/register', json=body).status_code == 201
+              assert c.post('/auth/register', json=body).status_code == 409
+              assert c.post('/auth/login', json=body).status_code == 200
+              assert c.get('/limits').json()['aiRequestsUsed'] == 0
+              assert c.get('/runs').json()['total'] == 0
+          PY
       - run: python scripts/verify_scenario.py --username scenario --other-username other --dataset full
+      - name: Backup and restore into a separate database
+        run: |
+          docker compose run --rm backups --once
+          docker compose run --rm --entrypoint sh backups -c 'cd /backups && sha256sum -c *.sha256'
+          docker compose exec -T db createdb -U balance balance_restore
+          docker compose run --rm --entrypoint sh backups -c 'pg_restore --exit-on-error --no-owner --no-acl -d balance_restore "$(ls -t /backups/balance-*.dump | head -n 1)"'
+          test "$(docker compose exec -T db psql -U balance -d balance -tAc 'SELECT count(*) FROM records')" = "$(docker compose exec -T db psql -U balance -d balance_restore -tAc 'SELECT count(*) FROM records')"
+          test "$(docker compose exec -T db psql -U balance -d balance -tAc 'SELECT count(*) FROM objects')" = "$(docker compose exec -T db psql -U balance -d balance_restore -tAc 'SELECT count(*) FROM objects')"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

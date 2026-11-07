@@ -1,5 +1,6 @@
 import os
 import uuid
+import time
 from datetime import datetime, timezone
 from sqlalchemy import create_engine, event, MetaData, Table, Column, String, Integer, JSON, Index, select, update, delete
 
@@ -29,6 +30,7 @@ Index("ix_member_fact",fact_members.c.run_id,fact_members.c.owner,fact_members.c
 
 class Store:
     def __init__(self, url=None):
+        from backend.security import quotas, locks
         self.engine = create_engine(url or os.environ.get("DATABASE_URL", "sqlite:///runtime/balance.db"))
         if self.engine.dialect.name == "sqlite":
             @event.listens_for(self.engine, "connect")
@@ -36,6 +38,8 @@ class Store:
                 connection.execute("PRAGMA busy_timeout=30000")
                 connection.execute("PRAGMA journal_mode=WAL")
         metadata.create_all(self.engine)
+        with self.engine.begin() as c:
+            c.execute(delete(quotas).where(quotas.c.expires < time.time()))
         # Additive schema upgrade for pre-existing v0.1 databases.
         for idx in fact_members.indexes:
             idx.create(self.engine,checkfirst=True)

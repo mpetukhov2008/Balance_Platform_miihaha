@@ -1,10 +1,12 @@
 import copy
 import json
+import math
 import time
 from collections import defaultdict
 from backend import catalog, domain
 from backend.executor import execute, ExecutionError
 from backend.store import now, uid
+from backend.security import queue_job, reserve, number, LimitExceeded
 
 STAGES = ["NORMALIZE", "UNION", "COMPARE", "AGGREGATE", "CHECKS", "AI_REVIEW", "PUBLISH"]
 
@@ -15,10 +17,12 @@ class Service:
     def script(self, owner, id):
         return self.store.get("script", owner, id) or next((s for s in catalog.scripts() if s["id"] == id), None)
 
-    def job(self, owner, type, payload):
+    def job(self, owner, type, payload, run=None, log=None):
         item = dict(id=uid(), owner=owner, type=type, status="QUEUED", payload=payload,
                     stdout="", stderr="", diagnostics=[], previewRows=[], truncated=False, error=None, reportRevision=None)
-        self.store.put("job", owner, item)
+        if type in ('RUN', 'PREVIEW', 'CHECK'):
+            reserve(self.store.engine, [('compute/' + owner, 3600, 1, number('COMPUTE_JOBS_PER_USER_HOUR', 30))])
+        queue_job(self.store, item, run=run, log=log)
         return item
 
     def start_run(self, owner, config):
@@ -34,9 +38,8 @@ class Service:
         run = dict(id=id, configurationId=config["id"], datasetId=dataset["id"], datasetName=dataset["name"],
                    status="QUEUED", reportReady=False, createdAt=now(), startedAt=None, finishedAt=None,
                    stages=stages, error=None)
-        self.store.put("run", owner, run)
-        self.store.put("logs", owner, {"id": "logs-" + id, "entries": []})
-        self.job(owner, "RUN", {"runId": id, "configuration": snapshot})
+        self.job(owner, "RUN", {"runId": id, "configuration": snapshot}, run=run,
+                 log={"id": "logs-" + id, "entries": []})
         return run
 
     def log(self, owner, run_id, stage, text, level="INFO", script=None):
@@ -58,21 +61,31 @@ class Service:
             if on_output is not None:
                 on_output(output)
             check_id = output["checkId"]
-            if not isinstance(check_id, str) or not check_id or check_id in seen:
+            if not isinstance(check_id, str) or not check_id or len(check_id) > 200 or check_id in seen:
                 raise ValueError("CHECK.id must be unique and nonempty")
             seen.add(check_id)
             valid_apps = {s["APP_ID"] for s in seg}
+            if len(output['result']) > 10000:
+                raise ValueError('Too many check rows')
             for row in output["result"]:
                 required = {"LABEL", "SOURCE", "ARGUMENT", "CNT", "TOTAL", "METRIC", "APP_IDS", "RESULT", "CONFIDENCE"}
                 if not isinstance(row, dict) or not required <= row.keys():
                     raise ValueError("Invalid check row schema")
                 if row["SOURCE"] not in ("BEFORE", "AFTER") or row["RESULT"] not in ("PASS", "FAIL") or row["CONFIDENCE"] not in ("HIGH", "LOW"):
                     raise ValueError("Invalid check row enum")
-                if not isinstance(row["APP_IDS"], list) or not set(row["APP_IDS"]) <= valid_apps:
+                if (not isinstance(row["APP_IDS"], list) or len(row['APP_IDS']) > 200
+                    or any(not isinstance(x, str) for x in row['APP_IDS'])
+                    or not set(row["APP_IDS"]) <= valid_apps or len(set(row['APP_IDS'])) != len(row['APP_IDS'])):
                     raise ValueError("Invalid check application IDs")
                 if any(type(row[k]) is not int or row[k] < 0 for k in ("CNT", "TOTAL")):
                     raise ValueError("Invalid check counts")
-                result.append(dict(row, rowId=uid(), checkId=check_id))
+                if row['CNT'] > row['TOTAL'] or row['TOTAL'] > len(valid_apps) or len(row['APP_IDS']) > row['CNT']:
+                    raise ValueError('Inconsistent check counts')
+                if any(not isinstance(row[k], str) or len(row[k]) > 2000 for k in ('LABEL', 'ARGUMENT')):
+                    raise ValueError('Invalid check text')
+                if type(row['METRIC']) not in (int, float) or not math.isfinite(row['METRIC']):
+                    raise ValueError('Invalid check metric')
+                result.append(dict({k: row[k] for k in required}, rowId=uid(), checkId=check_id))
         return (result, seen) if with_ids else result
 
     def process_run(self, owner, run_id, config):
@@ -125,7 +138,7 @@ class Service:
                     checks = self.checks(owner, config["checks"], compared, seg)
                 elif key == "AI_REVIEW":
                     if config["aiReviewEnabled"]:
-                        ai = self.ai_review(domain.summary(compared, seg), checks)
+                        ai = self.ai_review(domain.summary(compared, seg), checks, owner=owner)
                     else:
                         current["status"] = "SKIPPED"
                 elif key == "PUBLISH":
@@ -145,9 +158,9 @@ class Service:
             self.log(owner, run_id, current["key"] if current else None, str(exc), "ERROR")
         self.store.put("run", owner, run)
 
-    def ai_review(self, summary, checks):
+    def ai_review(self, summary, checks, owner):
         from backend.ai import review
-        return review(summary, checks)
+        return review(summary, checks, store=self.store, owner=owner)
 
     def process_job(self, job):
         owner, p = job["owner"], job["payload"]
@@ -160,7 +173,7 @@ class Service:
             elif job["type"] == "AI":
                 result = self.store.get("result", owner, p["runId"], sections=("checks",))
                 revision = result["reportRevision"]
-                opinion = self.ai_review(result["summary"], result["checks"])
+                opinion = self.ai_review(result["summary"], result["checks"], owner=owner)
                 latest = self.store.get("result", owner, p["runId"], sections=())
                 if latest["reportRevision"] != revision and opinion["status"] == "READY":
                     opinion["status"] = "STALE"
@@ -198,6 +211,15 @@ class Service:
                     if binding["script"]["kind"] == "AGGREGATE":
                         output = self.invoke(binding, rows=output["result"], segments=domain.segments(pairs))
                     job.update(stdout=output["stdout"], stderr=output["stderr"], previewRows=output["result"][:100], truncated=len(output["result"]) > 100)
+            # Preview is for the browser; don't persist arbitrarily large user output.
+            preview, size = [], 0
+            for row in job.get('previewRows', []):
+                size += len(json.dumps(row, ensure_ascii=False).encode())
+                if size > 262144:
+                    job['truncated'] = True
+                    break
+                preview.append(row)
+            job['previewRows'] = preview
             job["status"] = "SUCCEEDED"
         except Exception as exc:
             job.update(status="FAILED", error=str(exc))

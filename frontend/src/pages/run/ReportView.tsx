@@ -19,6 +19,7 @@ const AI_STATUS: Record<AiReview["status"], [string, string, string]> = {
 function AiBlock({ runId }: { runId: string }) {
   const api = useApi();
   const ai = useAsync(() => api.aiReview(runId), [runId]);
+  const limits = useAsync(() => api.limits(), [runId, ai.data?.generatedAt, ai.data?.status]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<unknown>();
   usePolling(ai.reload, ai.data?.status === "PENDING");
@@ -43,6 +44,7 @@ function AiBlock({ runId }: { runId: string }) {
         </button>
       </div>
       <div className="card-pad stack">
+        {limits.data && <div className="hint">Ваш суточный лимит: запросы {limits.data.aiRequestsUsed} / {limits.data.aiRequestsLimit}, токены {limits.data.aiTokensUsed} / {limits.data.aiTokensLimit}. Сброс в 00:00 UTC. Также действует общий лимит сервера.</div>}
         {error !== undefined && <ErrorAlert error={error} />}
         <Async state={ai}>
           {(a) => {

@@ -133,7 +133,7 @@ def test_regenerate_ai_without_normalization(setup, monkeypatch):
     c, app = setup
     run_id = make_run(c, app)
     base = f"/api/v1/runs/{run_id}"
-    monkeypatch.setattr(app.state.service, "ai_review", lambda summary, checks:
+    monkeypatch.setattr(app.state.service, "ai_review", lambda summary, checks, **kwargs:
                         dict(status="READY", text="Проверенное мнение", error=None, generatedAt="2026-11-07T00:00:00Z"))
     first = c.post(base + "/ai-review")
     assert first.status_code == 202

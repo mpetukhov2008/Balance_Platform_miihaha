@@ -59,6 +59,9 @@ export interface ApiClient {
   onUnauthorized?: () => void;
 
   login(username: string, password: string): Promise<Session>;
+  registrationOptions(): Promise<{ registrationEnabled: boolean; passwordMinLength: number }>;
+  register(username: string, password: string): Promise<{ ok: boolean }>;
+  limits(): Promise<{ aiRequestsUsed: number; aiRequestsLimit: number; aiTokensUsed: number; aiTokensLimit: number; resetTimezone: string }>;
   session(): Promise<Session>;
   logout(): Promise<void>;
 

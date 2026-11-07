@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import time
+import threading
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -17,6 +18,13 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator
 from backend import catalog, domain, queries
 from backend.store import Store, now, uid
 from backend.service import Service, STAGES, matches
+from backend.security import LimitExceeded, reserve, number, registration_enabled, validate_runtime, used, enabled
+from backend.http_security import SecurityMiddleware
+from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
+from backend.store import objects
+
+HASH_SLOTS = threading.BoundedSemaphore(2)
 
 class Model(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -24,6 +32,10 @@ class Model(BaseModel):
 class Login(Model):
     username: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=1, max_length=1000)
+
+class Registration(Model):
+    username: str = Field(min_length=3, max_length=40, pattern=r'^[A-Za-z0-9_.-]+$')
+    password: str = Field(min_length=15, max_length=128)
 
 class Binding(Model):
     scriptId: str
@@ -35,7 +47,7 @@ class Configuration(Model):
     normalizer: Binding
     comparator: Binding
     aggregator: Binding
-    checks: list[Binding] = Field(default_factory=list)
+    checks: list[Binding] = Field(default_factory=list, max_length=20)
     aiReviewEnabled: bool = False
 
 class ScriptBody(Model):
@@ -114,16 +126,46 @@ def fail(code, message, status=422):
 def page(items, page=1, pageSize=50):
     return dict(items=items[(page-1)*pageSize:page*pageSize], total=len(items), page=page, pageSize=pageSize)
 
-def password_hash(password, salt):
-    return hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1).hex()
+def password_hash(password, salt, n=16384):
+    if not HASH_SLOTS.acquire(blocking=False):
+        raise LimitExceeded('Сервис входа занят. Попробуйте через несколько секунд.', 2)
+    try:
+        return hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=n, r=8, p=1, maxmem=268435456).hex()
+    finally:
+        HASH_SLOTS.release()
+
+def create_user(db, username, password):
+    name = username.strip().lower()
+    salt = secrets.token_hex(16)
+    item = dict(id='user-' + hashlib.sha256(name.encode()).hexdigest(), username=name, salt=salt,
+                passwordHash=password_hash(password, salt, 131072), scryptN=131072)
+    with db.engine.begin() as c:
+        existing = c.execute(select(objects.c.id).where(objects.c.kind == 'user',
+            func.lower(objects.c.data['username'].as_string()) == name)).first()
+        if existing:
+            raise ValueError('Username already exists')
+        try:
+            c.execute(objects.insert().values(id=item['id'], kind='user', owner='system', data=item))
+        except IntegrityError:
+            raise ValueError('Username already exists') from None
+    return item
 
 def create_app(store=None):
     Path("runtime").mkdir(exist_ok=True)
     db = store or Store()
+    validate_runtime(db)
     svc = Service(db)
-    app = FastAPI(title="Баланс — API", version="0.1.0")
+    app = FastAPI(title="Баланс — API", version="0.1.0",
+                  docs_url=None if enabled('PUBLIC_MODE') else '/docs',
+                  redoc_url=None if enabled('PUBLIC_MODE') else '/redoc')
     app.state.store, app.state.service = db, svc
+    app.add_middleware(SecurityMiddleware, store=db)
     base = "/api/v1"
+
+    @app.exception_handler(LimitExceeded)
+    async def limit_error(request, exc):
+        return JSONResponse({'error': {'code': 'RATE_LIMIT', 'message': str(exc)}}, status_code=429,
+                            headers={'Retry-After': str(exc.retry_after)})
 
     @app.exception_handler(HTTPException)
     async def http_error(request, exc):
@@ -141,6 +183,7 @@ def create_app(store=None):
         session = db.get("session", None, hashlib.sha256(token.encode()).hexdigest()) if token else None
         if not session or session["expires"] < time.time():
             fail("UNAUTHENTICATED", "Войдите в приложение", 401)
+        reserve(db.engine, [('http.user/' + session['user']['id'], 60, 1, number('USER_REQUESTS_PER_MINUTE', 600))])
         if request.method not in ("GET", "HEAD", "OPTIONS"):
             if not hmac.compare_digest(request.headers.get("x-csrf-token", ""), session["csrfToken"]):
                 fail("CSRF", "Недействительный CSRF token", 403)
@@ -175,6 +218,8 @@ def create_app(store=None):
         return data
 
     def dataset(id):
+        if enabled('PUBLIC_MODE') and id not in os.environ.get('PUBLIC_DATASET_IDS', '').split(','):
+            fail('DATASET_UNAVAILABLE', 'Датасет не опубликован администратором')
         d = next((d for d in catalog.datasets() if d["id"] == id), None)
         if not d or d["status"] != "READY":
             fail("DATASET_UNAVAILABLE", "Датасет недоступен")
@@ -204,13 +249,43 @@ def create_app(store=None):
     def health():
         return {"status": "ok", "executionMode": os.environ.get("EXECUTION_MODE", "docker")}
 
+    @app.get(base + '/auth/options')
+    def auth_options():
+        return {'registrationEnabled': registration_enabled(), 'passwordMinLength': 15}
+
+    @app.post(base + '/auth/register', status_code=201)
+    def register(body: Registration, request: Request):
+        check_origin(request)
+        if not registration_enabled():
+            fail('REGISTRATION_DISABLED', 'Самостоятельная регистрация отключена администратором.', 403)
+        try:
+            create_user(db, body.username, body.password)
+        except ValueError:
+            fail('USERNAME_TAKEN', 'Это имя пользователя недоступно.', 409)
+        return {'ok': True}
+
+    @app.get(base + '/limits')
+    def limits(s=Depends(auth)):
+        owner = s['user']['id']
+        return {'aiRequestsUsed': used(db.engine, 'ai.requests.user/' + owner),
+                'aiRequestsLimit': number('AI_REQUESTS_PER_USER_DAY', 10),
+                'aiTokensUsed': used(db.engine, 'ai.tokens.user/' + owner),
+                'aiTokensLimit': number('AI_TOKENS_PER_USER_DAY', 30000), 'resetTimezone': 'UTC'}
+
     @app.post(base + "/auth/login")
     def login(body: Login, request: Request, response: Response):
         check_origin(request)
         # Passwords are never stored in the session or source code.
-        u = next((u for u in db.all("user", None) if u["username"] == body.username), None)
-        if not u or not hmac.compare_digest(u["passwordHash"], password_hash(body.password, u["salt"])):
+        with db.engine.connect() as c:
+            u = c.execute(select(objects.c.data).where(objects.c.kind == 'user',
+                func.lower(objects.c.data['username'].as_string()) == body.username.strip().lower())).scalar()
+        candidate = password_hash(body.password, u['salt'] if u else '0' * 32, u.get('scryptN', 16384) if u else 131072)
+        if not u or not hmac.compare_digest(u["passwordHash"], candidate):
             fail("INVALID_CREDENTIALS", "Неверный логин или пароль", 401)
+        if u.get('scryptN', 16384) < 131072:
+            salt = secrets.token_hex(16)
+            u.update(salt=salt, passwordHash=password_hash(body.password, salt, 131072), scryptN=131072)
+            db.put('user', 'system', u)
         old = request.cookies.get("balance_session")
         if old:
             db.remove(hashlib.sha256(old.encode()).hexdigest())
@@ -233,7 +308,10 @@ def create_app(store=None):
 
     @app.get(base + "/datasets")
     def datasets(page_: int = Query(1, alias="page", ge=1), pageSize: int = Query(50, ge=1, le=200), s=Depends(auth)):
-        return page(catalog.datasets(), page_, pageSize)
+        items = catalog.datasets()
+        if enabled('PUBLIC_MODE'):
+            items = [d for d in items if d['id'] in os.environ.get('PUBLIC_DATASET_IDS', '').split(',')]
+        return page(items, page_, pageSize)
 
     @app.get(base + "/script-contracts")
     def contracts(s=Depends(auth)):
