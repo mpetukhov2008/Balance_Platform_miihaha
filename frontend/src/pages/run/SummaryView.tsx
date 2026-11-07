@@ -8,10 +8,10 @@ import { pivotLink } from "./PivotView";
 import { useRun } from "./RunPage";
 import { loadAllChecks } from "./ChecksView";
 
-function Kpi({ label, value, of, foot, tone }: { label: string; value: number | null; of?: number | null; foot?: React.ReactNode; tone?: string }) {
+function Kpi({ label, value, of, foot, tone, hero }: { label: string; value: number | null; of?: number | null; foot?: React.ReactNode; tone?: string; hero?: boolean }) {
   const share = value !== null && of ? value / of : null;
   return (
-    <div className="card kpi">
+    <div className={`card kpi ${hero ? "hero" : ""}`}>
       <div className="kpi-label">{label}</div>
       <div className="kpi-value" style={tone ? { color: `var(--${tone})` } : undefined}>
         {value === null ? <span className="na" title="Сервер не вычислил показатель">нет данных</span> : num(value)}
@@ -77,7 +77,7 @@ export function SummaryView() {
         return (
           <div className="stack" style={{ gap: 16 }}>
             <div className="kpis">
-              <Kpi label="Всего заявок" value={s.totalApps} foot={run.datasetName} />
+              <Kpi label="Всего заявок" value={s.totalApps} foot={run.datasetName} hero />
               <Kpi label="С любыми различиями" value={s.changedApps} of={s.totalApps} tone="accent" foot={s.changedApps !== null && s.decisionChangedApps !== null ? `${num(s.changedApps - s.decisionChangedApps)} — различия есть, решение то же` : undefined} />
               <Kpi label="Сменилось решение" value={s.decisionChangedApps} of={s.totalApps} tone="bad" foot={<Link to={pivotLink(run.id, { filters: [{ field: "DECISION_CHANGED", op: "eq", value: 1 }] })}>в сводную →</Link>} />
               <Kpi label="Смена решения при смене внешних данных" value={s.externalDriftDecisionApps} of={s.decisionChangedApps} tone="warn" foot="Может пересекаться с изменениями стратегии" />

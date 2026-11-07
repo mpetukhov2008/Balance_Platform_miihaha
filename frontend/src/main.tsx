@@ -5,6 +5,7 @@ import { ApiContext, createApiClient, type ApiClient } from "./api";
 import { AuthProvider } from "./auth";
 import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import "@fontsource-variable/manrope";
 import "./styles/tokens.css";
 import "./styles/base.css";
 import "./styles/components.css";

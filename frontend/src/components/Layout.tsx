@@ -4,6 +4,7 @@ import { useApi } from "../api";
 import type { MockApiClient } from "../api/mock";
 import { useAuth } from "../auth";
 import { Icon } from "./Icon";
+import { BrandLogo } from "./BrandLogo";
 
 function useTheme() {
   const [theme, setTheme] = useState<string>(() => {
@@ -43,49 +44,49 @@ export function Layout() {
   const { session, logout } = useAuth();
   const api = useApi();
   const { dark, toggle } = useTheme();
+  const name = session?.user.username ?? "";
   return (
-    <>
+    <div className="app">
       <DemoBanner />
-      <div className="app">
-        <aside className="sidebar">
-          <div className="brand">
-            <div className="brand-mark">Б</div>
-            <div>
-              <div className="brand-name">Баланс Платформа</div>
-              <div className="brand-sub">Анализ изменений СПР</div>
+      <header className="topbar">
+        <div className="topbar-in">
+          <NavLink to="/runs" className="brand" aria-label="Баланс Платформа — на главную">
+            <BrandLogo height={38} />
+            <span className="brand-divider" aria-hidden="true" />
+            <div className="brand-sub">Анализ<br />изменений СПР</div>
+          </NavLink>
+          <nav className="nav" aria-label="Разделы">
+            <NavLink to="/runs" className="nav-link">
+              <Icon name="runs" /> Запуски
+            </NavLink>
+            <NavLink to="/configurations" className="nav-link">
+              <Icon name="config" /> Конфигурации
+            </NavLink>
+            <NavLink to="/workspace" className="nav-link">
+              <Icon name="code" /> Рабочая область
+            </NavLink>
+          </nav>
+          <div className="top-user">
+            <div className="avatar" aria-hidden="true">{name.slice(0, 1)}</div>
+            <div className="top-meta">
+              <b>{name}</b>
+              <small>
+                <i className="mode-dot" style={{ background: api.mode === "mock" ? "var(--warn)" : "var(--ok)" }} />
+                {api.mode === "mock" ? "демо-данные" : "реальный API"}
+              </small>
             </div>
+            <button className="top-btn" onClick={toggle} title={dark ? "Светлая тема" : "Тёмная тема"} aria-label="Переключить тему">
+              <Icon name={dark ? "sun" : "moon"} />
+            </button>
+            <button className="top-btn" onClick={logout}>
+              <Icon name="logout" /> Выйти
+            </button>
           </div>
-          <NavLink to="/runs" className="nav-link">
-            <Icon name="runs" /> Запуски
-          </NavLink>
-          <NavLink to="/configurations" className="nav-link">
-            <Icon name="config" /> Конфигурации
-          </NavLink>
-          <NavLink to="/workspace" className="nav-link">
-            <Icon name="code" /> Рабочая область
-          </NavLink>
-          <div className="sidebar-foot">
-            <div className="row spread">
-              <span>
-                <span className="muted">Вход: </span>
-                <b style={{ color: "var(--text)" }}>{session?.user.username}</b>
-              </span>
-              <button className="btn btn-ghost btn-sm btn-icon" onClick={toggle} title={dark ? "Светлая тема" : "Тёмная тема"} aria-label="Переключить тему">
-                <Icon name={dark ? "sun" : "moon"} />
-              </button>
-            </div>
-            <div className="row spread">
-              <span className="small">API: {api.mode === "mock" ? <b style={{ color: "var(--warn)" }}>демо</b> : <b style={{ color: "var(--ok)" }}>реальный</b>}</span>
-              <button className="btn btn-ghost btn-sm" onClick={logout}>
-                <Icon name="logout" /> Выйти
-              </button>
-            </div>
-          </div>
-        </aside>
-        <main className="main">
-          <Outlet />
-        </main>
-      </div>
-    </>
+        </div>
+      </header>
+      <main className="main">
+        <Outlet />
+      </main>
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import { useAuth } from "../auth";
 import { DemoBanner } from "../components/Layout";
 import { ErrorAlert } from "../components/ui";
 import { Icon } from "../components/Icon";
+import { BrandLogo } from "../components/BrandLogo";
 
 export function Login() {
   const { login, expired } = useAuth();
@@ -31,15 +32,12 @@ export function Login() {
       <DemoBanner />
       <div className="login-wrap">
         <div className="login-side">
-          <div className="brand" style={{ padding: 0 }}>
-            <div className="brand-mark">Б</div>
-            <div>
-              <div className="brand-name">Баланс Платформа</div>
-              <div className="brand-sub">Анализ изменений СПР</div>
-            </div>
+          <div className="login-logo">
+            <BrandLogo height={72} />
+            <div className="brand-sub">Анализ изменений СПР</div>
           </div>
           <div>
-            <h1 className="login-hero">Что изменилось, у кого и из-за чего — до выката на прод.</h1>
+            <h1 className="login-hero">Что изменилось, у кого и из-за чего — <em>до выката на прод.</em></h1>
             <ul className="login-points">
               <li><Icon name="swap" /> Сравнение ответов BEFORE (MASTER) и AFTER (BETA)</li>
               <li><Icon name="table" /> Сводная с изменяемой раскладкой и переходом до атрибута</li>

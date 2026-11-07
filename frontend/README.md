@@ -51,4 +51,4 @@ npm run build        # tsc + vite build → dist/
 
 ## Зависимости
 
-Runtime: `react`, `react-dom`, `react-router-dom`, `@uiw/react-codemirror` + `@codemirror/lang-python` (MIT). Сводная — собственная таблица поверх серверной pivot-выборки, без сторонних pivot-компонентов и CDN. Версии зафиксированы точно, есть `package-lock.json`.
+Runtime: `react`, `react-dom`, `react-router-dom`, `@uiw/react-codemirror` + `@codemirror/lang-python` (MIT), шрифт `@fontsource-variable/manrope` (OFL, локально в бандле). Палитра и темы — токены в `src/styles/tokens.css`. Сводная — собственная таблица поверх серверной pivot-выборки, без сторонних pivot-компонентов и CDN. Версии зафиксированы точно, есть `package-lock.json`.
