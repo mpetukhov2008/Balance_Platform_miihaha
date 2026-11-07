@@ -84,11 +84,11 @@ export function AppFooter() {
       <GhostTitle text={HACK.name} className="foot-ghost" />
       <div className="app-foot-in">
         <span className="foot-about">
-          <b style={{ color: "#fff" }}>{BRAND.name}</b> — студенческий проект команды {HACK.team} для компании Balance Platform на хакатоне{" "}
+          Сайт для <b style={{ color: "#fff" }}>{BRAND.name}</b> сделала студенческая команда {HACK.team} на хакатоне{" "}
           <a href={HACK.url} target="_blank" rel="noopener noreferrer">
             {HACK.name}
           </a>
-          . Не является официальным продуктом Balance Platform.
+          . Команда не является сотрудниками компании.
         </span>
         <SupportLink />
         <span className="row" style={{ gap: 10 }}>

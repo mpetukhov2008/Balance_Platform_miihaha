@@ -1,13 +1,13 @@
 // Название и подписи сайта — в одном месте, чтобы их было легко поменять.
 export const BRAND = {
-  name: "Дельта решений",
-  logoTop: "ДЕЛЬТА",
-  logoBottom: "РЕШЕНИЙ",
+  name: "Balance Platform",
+  logoTop: "BALANCE",
+  logoBottom: "PLATFORM",
   tagline: "Анализ изменений СПР",
-  ring: "ДЕЛЬТА РЕШЕНИЙ",
-  /** Мы — студенческая команда, а не сотрудники компании-заказчика. */
+  ring: "BALANCE PLATFORM",
+  /** Делаем для Balance Platform, но мы студенческая команда, а не сотрудники компании. */
   disclaimer:
-    "Студенческий проект команды МИЯУХАХА, выполненный для компании Balance Platform на хакатоне Nuclear IT Hack. Не является официальным продуктом Balance Platform.",
+    "Сделано студенческой командой МИЯУХАХА для компании Balance Platform на хакатоне Nuclear IT Hack. Команда не является сотрудниками компании.",
 };
 
 export const SUPPORT = [
