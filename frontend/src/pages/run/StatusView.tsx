@@ -7,11 +7,13 @@ import { ErrorAlert, StatusBadge } from "../../components/ui";
 import { duration, STAGE_LABEL, timeOnly } from "../../lib/format";
 import { usePolling } from "../../lib/hooks";
 import { useRun } from "./RunPage";
+import { useTerms } from "../../lib/mode";
 
 const codeLink = (scriptId: string) => `/workspace/${encodeURIComponent(scriptId)}`;
 
 export function StatusView() {
   const { run } = useRun();
+  const t = useTerms();
   const api = useApi();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [logError, setLogError] = useState<unknown>();
@@ -79,7 +81,7 @@ export function StatusView() {
           return (
             <div key={s.key} className={`stage s-${s.status}`}>
               <div className="row spread" style={{ gap: 4 }}>
-                <span className="stage-key">{s.key}</span>
+                <span className="stage-key">{t.simple ? `Шаг ${run.stages.indexOf(s) + 1}` : s.key}</span>
               </div>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{STAGE_LABEL[s.key]}</div>
               <StatusBadge status={s.status} />

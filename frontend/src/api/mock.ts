@@ -63,6 +63,12 @@ export class MockApiClient implements ApiClient {
     this.user = { id: "u-" + username, username };
     return { user: this.user, csrfToken: "demo" };
   };
+  register: C["register"] = async ({ username, password }) => {
+    await wait();
+    if (password.length < 10) throw new ApiError(422, "VALIDATION_ERROR", "Пароль должен содержать не менее 10 символов", { fields: { password: "Не менее 10 символов" } });
+    this.user = { id: "u-" + username, username };
+    return { user: this.user, csrfToken: "demo" };
+  };
   session: C["session"] = async () => {
     await wait(100);
     if (!this.user) throw new ApiError(401, "UNAUTHENTICATED", "Войдите в приложение");

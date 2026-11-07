@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { ApiError } from "../api";
 import { Icon } from "./Icon";
-import { CHANGE_LABEL, SOURCE_LABEL } from "../lib/format";
+import { CHANGE_LABEL } from "../lib/format";
+import { useTerms } from "../lib/mode";
 
 export function Badge({ tone, children, pulse, title }: { tone?: string; children: ReactNode; pulse?: boolean; title?: string }) {
   return (
@@ -31,22 +32,25 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 export function SourceBadge({ source }: { source: string }) {
-  return <Badge tone={source === "BEFORE" ? "before" : "after"}>{SOURCE_LABEL[source] ?? source}</Badge>;
+  const t = useTerms();
+  return <Badge tone={source === "BEFORE" ? "before" : "after"}>{t.source(source)}</Badge>;
 }
 
 const CT_TONE: Record<string, string> = { SAME: "", VALUE_CHANGED: "warn", ATTRIBUTE_NEW: "ok", ATTRIBUTE_LOST: "bad" };
 export function ChangeBadge({ type }: { type: string }) {
+  const t = useTerms();
   return (
-    <Badge tone={CT_TONE[type]} title={CHANGE_LABEL[type]}>
-      {type}
+    <Badge tone={CT_TONE[type]} title={t.simple ? type : CHANGE_LABEL[type]}>
+      {t.change(type)}
     </Badge>
   );
 }
 
 export function DecisionPill({ value }: { value: string | null | undefined }) {
+  const t = useTerms();
   if (value === null || value === undefined || value === "") return <span className="muted">—</span>;
   const tone = /APPROVE/i.test(value) ? "ok" : /REJECT/i.test(value) ? "bad" : "warn";
-  return <Badge tone={tone}>{value}</Badge>;
+  return <Badge tone={tone} title={t.simple ? value : undefined}>{t.decision(value)}</Badge>;
 }
 
 /** Ошибка сервера. Никогда не подменяется нулями или демо-данными. */

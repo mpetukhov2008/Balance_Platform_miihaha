@@ -59,6 +59,8 @@ export interface ApiClient {
   onUnauthorized?: () => void;
 
   login(username: string, password: string): Promise<Session>;
+  /** Самостоятельная регистрация (если сервер её разрешает). 404/405 — регистрация закрыта. */
+  register(body: { username: string; password: string; inviteCode?: string }): Promise<Session>;
   session(): Promise<Session>;
   logout(): Promise<void>;
 

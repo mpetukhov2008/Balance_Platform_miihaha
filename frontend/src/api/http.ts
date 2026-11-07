@@ -72,6 +72,7 @@ export class HttpApiClient implements ApiClient {
   };
 
   login: C["login"] = (username, password) => this.request<Session>("POST", "/auth/login", { username, password }).then(this.keep);
+  register: C["register"] = (body) => this.request<Session>("POST", "/auth/register", body).then(this.keep);
   session: C["session"] = () => this.request<Session>("GET", "/auth/session").then(this.keep);
   logout: C["logout"] = async () => {
     await this.request("POST", "/auth/logout", {});

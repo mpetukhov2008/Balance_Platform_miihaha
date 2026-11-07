@@ -9,6 +9,7 @@ type AuthState = {
   checking: boolean;
   bootError: unknown;
   login: (u: string, p: string) => Promise<void>;
+  register: (u: string, p: string, invite?: string) => Promise<void>;
   logout: () => Promise<void>;
   retry: () => void;
 };
@@ -51,6 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(s);
   }, [api]);
 
+  const register = useCallback(async (u: string, p: string, invite?: string) => {
+    const s = await api.register({ username: u, password: p, ...(invite ? { inviteCode: invite } : {}) });
+    setExpired(false);
+    setSession(s);
+  }, [api]);
+
   const logout = useCallback(async () => {
     try {
       await api.logout();
@@ -61,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [api]);
 
   return (
-    <AuthContext.Provider value={{ session, expired, checking, bootError, login, logout, retry: () => setTick((t) => t + 1) }}>
+    <AuthContext.Provider value={{ session, expired, checking, bootError, login, register, logout, retry: () => setTick((t) => t + 1) }}>
       {children}
     </AuthContext.Provider>
   );
