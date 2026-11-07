@@ -28,6 +28,9 @@ function builtin(idv: string, kind: Script["kind"], filename: string, params: Re
 }
 
 export class MockApiClient implements ApiClient {
+  registrationOptions: C["registrationOptions"] = async () => ({ registrationEnabled: true, passwordMinLength: 15 });
+  register: C["register"] = async () => ({ ok: true });
+  limits: C["limits"] = async () => ({ aiRequestsUsed: 0, aiRequestsLimit: 10, aiTokensUsed: 0, aiTokensLimit: 30000, resetTimezone: "UTC" });
   readonly mode = "mock" as const;
   onUnauthorized?: () => void;
   private user: { id: string; username: string } | null = null;

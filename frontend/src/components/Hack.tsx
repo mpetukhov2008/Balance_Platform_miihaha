@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Mars } from "./Mars";
+import { BRAND, SUPPORT } from "../lib/brand";
 
 export const HACK = {
   name: "Nuclear IT Hack",
@@ -8,14 +9,28 @@ export const HACK = {
   team: "МИЯУХАХА",
 };
 
-export const SUPPORT = { url: "https://t.me/m_petukhov_2008", handle: "@m_petukhov_2008" };
-
-/** Ссылка на техподдержку в Telegram. */
+/** Техподдержка 24/7: несколько контактов в Telegram. */
 export function SupportLink() {
   return (
-    <a className="support-link" href={SUPPORT.url} target="_blank" rel="noopener noreferrer">
-      <span className="support-dot" aria-hidden="true" /> Техподдержка 24/7 · Telegram {SUPPORT.handle}
-    </a>
+    <span className="support-link">
+      <span className="support-dot" aria-hidden="true" /> Техподдержка 24/7 в Telegram:
+      {SUPPORT.map((s) => (
+        <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer">
+          {s.handle}
+        </a>
+      ))}
+    </span>
+  );
+}
+
+/** Крупный контурный заголовок, всегда растянутый ровно на ширину контейнера. */
+export function GhostTitle({ text, className }: { text: string; className?: string }) {
+  return (
+    <svg className={`ghost-svg ${className ?? ""}`} viewBox="0 0 1000 118" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+      <text x="0" y="104" textLength="1000" lengthAdjust="spacingAndGlyphs">
+        {text.toUpperCase()}
+      </text>
+    </svg>
   );
 }
 
@@ -44,7 +59,7 @@ export function HackChip() {
 
 /** Вращающийся Марс с орбитальной надписью. */
 export function Orbit() {
-  const text = `BALANCE PLATFORM · ${HACK.name.toUpperCase()} · CODING WITH CLARITY · `;
+  const text = `${BRAND.ring} · ${HACK.name.toUpperCase()} · АНАЛИЗ ИЗМЕНЕНИЙ · `;
   return (
     <div className="orbit" aria-hidden="true">
       <Mars size={360} />
@@ -66,13 +81,14 @@ export function Orbit() {
 export function AppFooter() {
   return (
     <footer className="app-foot">
-      <div className="ghost-text" aria-hidden="true">Nuclear IT Hack</div>
+      <GhostTitle text={HACK.name} className="foot-ghost" />
       <div className="app-foot-in">
-        <span>
-          Balance Platform — проект команды <b style={{ color: "#fff" }}>{HACK.team}</b> для хакатона{" "}
+        <span className="foot-about">
+          <b style={{ color: "#fff" }}>{BRAND.name}</b> — студенческий проект команды {HACK.team} для компании Balance Platform на хакатоне{" "}
           <a href={HACK.url} target="_blank" rel="noopener noreferrer">
             {HACK.name}
           </a>
+          . Не является официальным продуктом Balance Platform.
         </span>
         <SupportLink />
         <span className="row" style={{ gap: 10 }}>

@@ -4,6 +4,7 @@ import { CHANGE_TYPES } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { keyLabel } from "../../lib/format";
 import { filterValues, makeFilter, type PivotLayout } from "./pivotState";
+import { useTerms } from "../../lib/mode";
 
 export const KNOWN_VALUES: Record<string, Scalar[]> = {
   CHANGE_TYPE: CHANGE_TYPES,
@@ -65,18 +66,19 @@ function FilterChip({ f, dim, onChange, onRemove }: { f: Filter; dim: Dimension 
   const [draft, setDraft] = useState("");
   const vals = filterValues(f);
   const known = KNOWN_VALUES[f.field];
+  const t = useTerms();
   const setVals = (v: Scalar[]) => onChange(makeFilter(f.field, v));
   return (
     <div className="chip filter">
       <div className="row spread">
-        <span className="mono" style={{ fontWeight: 650 }}>{dim?.label ?? f.field}</span>
+        <span style={{ fontWeight: 650 }}>{dim?.label ?? t.field(f.field)}</span>
         <button onClick={onRemove} aria-label={`Убрать фильтр ${f.field}`}><Icon name="x" /></button>
       </div>
       {known ? (
         <div className="vals">
           {known.map((k) => (
             <label key={String(k)} className="check small">
-              <input type="checkbox" checked={vals.includes(k)} onChange={(e) => setVals(e.target.checked ? [...vals, k] : vals.filter((x) => x !== k))} /> {keyLabel(k)}
+              <input type="checkbox" checked={vals.includes(k)} onChange={(e) => setVals(e.target.checked ? [...vals, k] : vals.filter((x) => x !== k))} /> {t.value(f.field, k) ?? keyLabel(k)}
             </label>
           ))}
         </div>
@@ -113,6 +115,7 @@ function FilterChip({ f, dim, onChange, onRemove }: { f: Filter; dim: Dimension 
 }
 
 export function PivotControls({ layout, dims, onChange }: { layout: PivotLayout; dims: Dimension[]; onChange: (l: PivotLayout) => void }) {
+  const t = useTerms();
   const filterable = dims.filter((d) => d.canFilter && !layout.filters.some((f) => f.field === d.name));
   const setFilters = (filters: Filter[]) => onChange({ ...layout, filters, page: 1 });
   return (
@@ -139,7 +142,7 @@ export function PivotControls({ layout, dims, onChange }: { layout: PivotLayout;
           ))}
         </div>
       </div>
-      <div className="muted small">Пустой фильтр не применяется. Пустые KEY/SUFFIX показываются как ∅.</div>
+      <div className="muted small">{t.simple ? "Перетаскивать не нужно: стрелками меняйте порядок, кнопкой «→» переносите поле между строками и колонками. Пустое значение показано как ∅." : "Пустой фильтр не применяется. Пустые KEY/SUFFIX показываются как ∅."}</div>
     </div>
   );
 }

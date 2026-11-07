@@ -94,8 +94,10 @@ describe("2. Валидность JSON-параметров", () => {
     const button = within(panel).getByRole("button", { name: /Выполнить и добавить/ }) as HTMLButtonElement;
     await waitFor(() => expect(button.disabled).toBe(false));
     const textarea = within(panel).getByRole("textbox") as HTMLTextAreaElement;
+    // Дожидаемся, пока редактор применит параметры выбранной проверки (эффект сброса валидности).
+    await waitFor(() => expect(textarea.value).toContain("app_ids_limit"));
     fireEvent.change(textarea, { target: { value: "{" } });
-    expect(button.disabled).toBe(true);
+    await waitFor(() => expect(button.disabled).toBe(true));
     const other = [...select.options].find((o) => o.value !== select.value)!.value;
     fireEvent.change(select, { target: { value: other } });
     await waitFor(() => expect(button.disabled).toBe(false));

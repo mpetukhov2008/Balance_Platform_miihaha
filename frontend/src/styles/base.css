@@ -97,7 +97,7 @@ pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
   h1 { font-size: 26px; }
 }
 
-/* Логотип Balance Platform */
+/* Логотип сайта */
 .brand-logo { display: block; flex: none; overflow: visible; }
 .brand-divider { width: 1px; height: 30px; background: rgba(255, 255, 255, .18); }
 .topbar .brand-sub { line-height: 1.25; }

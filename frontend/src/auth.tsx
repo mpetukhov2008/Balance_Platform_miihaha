@@ -9,6 +9,7 @@ type AuthState = {
   checking: boolean;
   bootError: unknown;
   login: (u: string, p: string) => Promise<void>;
+  register: (u: string, p: string) => Promise<void>;
   logout: () => Promise<void>;
   retry: () => void;
 };
@@ -51,6 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(s);
   }, [api]);
 
+  /** Регистрация не открывает сессию: после создания аккаунта выполняется обычный вход. */
+  const register = useCallback(async (u: string, p: string) => {
+    await api.register(u, p);
+    const s = await api.login(u, p);
+    setExpired(false);
+    setSession(s);
+  }, [api]);
+
   const logout = useCallback(async () => {
     try {
       await api.logout();
@@ -61,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [api]);
 
   return (
-    <AuthContext.Provider value={{ session, expired, checking, bootError, login, logout, retry: () => setTick((t) => t + 1) }}>
+    <AuthContext.Provider value={{ session, expired, checking, bootError, login, register, logout, retry: () => setTick((t) => t + 1) }}>
       {children}
     </AuthContext.Provider>
   );

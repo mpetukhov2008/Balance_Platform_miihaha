@@ -9,6 +9,7 @@ import { effectiveFilters, PivotControls } from "./PivotControls";
 import { QuickFilters } from "./QuickFilters";
 import { layoutFromSearch, layoutToSearch, type PivotLayout } from "./pivotState";
 import { useRun } from "./RunPage";
+import { useTerms } from "../../lib/mode";
 
 export function pivotLink(runId: string, l: Partial<PivotLayout>) {
   return `/runs/${encodeURIComponent(runId)}/pivot?${layoutToSearch(l)}`;
@@ -17,13 +18,17 @@ export function pivotLink(runId: string, l: Partial<PivotLayout>) {
 /** Контекст ячейки для заголовка списка заявок (только подписи; выборку задаёт token). */
 export type CellContext = { rows: [string, Scalar][]; columns: [string, Scalar][]; filters: Filter[]; value: number; measure: string };
 
-function KeyCell({ v }: { v: Scalar }) {
+function KeyCell({ v, field }: { v: Scalar; field?: string }) {
+  const t = useTerms();
+  const word = field ? t.value(field, v) : null;
+  if (word) return <span title={String(v)}>{word}</span>;
   if (v === null) return <span className="ck-null">null</span>;
   if (v === "") return <span className="ck-empty" title="пустое значение">∅</span>;
   return <>{String(v)}</>;
 }
 
 function ColumnHeaders({ p, rowSpan }: { p: PivotResult; rowSpan: number }) {
+  const t = useTerms();
   const levels = Math.max(1, p.columnFields.length);
   return (
     <thead>
@@ -39,13 +44,13 @@ function ColumnHeaders({ p, rowSpan }: { p: PivotResult; rowSpan: number }) {
           <tr key={lvl}>
             {lvl === 0 && (
               <th className="corner" colSpan={Math.max(1, rowSpan)} rowSpan={levels} style={{ top: 0 }}>
-                {p.rowFields.join(" › ") || "—"}
-                <div style={{ fontFamily: "var(--font)", fontWeight: 500 }}>{p.columnFields.length ? `колонки: ${p.columnFields.join(" × ")}` : ""}</div>
+                {p.rowFields.map(t.field).join(" › ") || "—"}
+                <div style={{ fontFamily: "var(--font)", fontWeight: 500 }}>{p.columnFields.length ? `колонки: ${p.columnFields.map(t.field).join(" × ")}` : ""}</div>
               </th>
             )}
             {groups.map((g, i) => (
               <th key={i} colSpan={g.span} style={{ top: lvl * 31 }}>
-                {p.columnFields.length ? <><span className="muted">{p.columnFields[lvl]}=</span><KeyCell v={g.key} /></> : p.measure.label}
+                {p.columnFields.length ? <><span className="muted">{t.field(p.columnFields[lvl])}: </span><KeyCell v={g.key} field={p.columnFields[lvl]} /></> : p.measure.label}
               </th>
             ))}
           </tr>
@@ -75,7 +80,7 @@ function PivotTable({ p, onCell, disabled }: { p: PivotResult; onCell: (r: numbe
                 const rep = !!prev && rk.slice(0, lvl + 1).every((x, j) => x === prev[j]);
                 return (
                   <td key={lvl} className={`rh ${rep ? "rep" : ""}`} title={keyLabel(v)}>
-                    {!rep && <KeyCell v={v} />}
+                    {!rep && <KeyCell v={v} field={p.rowFields[lvl]} />}
                   </td>
                 );
               })}
@@ -108,6 +113,7 @@ export function PivotView() {
   const nav = useNavigate();
   const [search, setSearch] = useSearchParams();
   const layout = layoutFromSearch(search);
+  const terms = useTerms();
   const dims = useAsync(() => api.dimensions(run.id), [run.id]);
   const query = { rows: layout.rows, columns: layout.columns, filters: effectiveFilters(layout.filters), measure: "SUM_CNT" as const, page: layout.page, pageSize: layout.pageSize };
   const qKey = JSON.stringify(query);
@@ -137,7 +143,7 @@ export function PivotView() {
 
   return (
     <div className="pv-layout">
-      <PivotControls layout={layout} dims={dims.data.items} onChange={change} />
+      <PivotControls layout={layout} dims={dims.data.items.map((d) => ({ ...d, label: d.label === d.name ? terms.field(d.name) : d.label }))} onChange={change} />
       <section className="card" style={{ minWidth: 0 }}>
         <QuickFilters runId={run.id} dims={dims.data.items} layout={layout} onChange={change} />
         {tooWide ? (
@@ -156,7 +162,7 @@ export function PivotView() {
                   <div>
                     <h2>{p.measure.label}</h2>
                     <div className="hint">
-                      Сумма CNT {p.measure.additive ? "(аддитивная мера)" : ""}. Уникальных заявок в отфильтрованном наборе: <b>{num(p.uniqueApps)}</b>. Значение ячейки может превышать число уникальных заявок.
+                      {terms.simple ? <>Число в ячейке — сколько раз заявки попали в эту группу. Всего разных заявок под фильтрами: <b>{num(p.uniqueApps)}</b>. Нажмите на число, чтобы увидеть сами заявки.</> : <>Сумма CNT {p.measure.additive ? "(аддитивная мера)" : ""}. Уникальных заявок в отфильтрованном наборе: <b>{num(p.uniqueApps)}</b>. Значение ячейки может превышать число уникальных заявок.</>}
                     </div>
                   </div>
                   <span className="muted small nowrap">{num(p.totalRows)} групп строк</span>

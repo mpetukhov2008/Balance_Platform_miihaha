@@ -7,9 +7,11 @@ import { keyLabel, num } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import type { CellContext } from "./PivotView";
 import { useRun } from "./RunPage";
+import { useTerms } from "../../lib/mode";
 import { loadAllChecks } from "./ChecksView";
 
 export function ApplicationsView() {
+  const t = useTerms();
   const { run } = useRun();
   const api = useApi();
   const nav = useNavigate();
@@ -61,7 +63,7 @@ export function ApplicationsView() {
           {checkRowData ? (
             <div className="row" style={{ marginTop: 6 }}>
               <b>{checkRowData.LABEL}</b> <span className="mono muted">{checkRowData.ARGUMENT || "—"}</span>
-              <span className={`badge ${checkRowData.RESULT === "FAIL" ? "b-bad" : "b-ok"}`}>{checkRowData.RESULT}</span>
+              <span className={`badge ${checkRowData.RESULT === "FAIL" ? "b-bad" : "b-ok"}`}>{t.result(checkRowData.RESULT)}</span>
               <span className="muted small">CNT {num(checkRowData.CNT)} · в выборке проверки {checkRowData.APP_IDS.length}</span>
             </div>
           ) : checks.error ? <ErrorAlert error={checks.error} compact /> : <div className="skeleton" style={{ height: 20, marginTop: 6 }} />}
@@ -97,9 +99,9 @@ export function ApplicationsView() {
                       <thead>
                         <tr>
                           <th>APP_ID</th>
-                          <th>Решение BEFORE</th>
+                          <th>{t.simple ? "Решение было" : "Решение BEFORE"}</th>
                           <th />
-                          <th>Решение AFTER</th>
+                          <th>{t.simple ? "Решение стало" : "Решение AFTER"}</th>
                           <th>Смена решения</th>
                           <th className="num">Изменённых атрибутов</th>
                         </tr>
