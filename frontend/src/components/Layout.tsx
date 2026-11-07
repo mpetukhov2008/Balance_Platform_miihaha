@@ -4,6 +4,7 @@ import { useApi } from "../api";
 import type { MockApiClient } from "../api/mock";
 import { useAuth } from "../auth";
 import { Icon } from "./Icon";
+import { BrandLogo } from "./BrandLogo";
 
 function useTheme() {
   const [theme, setTheme] = useState<string>(() => {
@@ -50,11 +51,9 @@ export function Layout() {
       <header className="topbar">
         <div className="topbar-in">
           <NavLink to="/runs" className="brand" aria-label="Баланс Платформа — на главную">
-            <div className="brand-mark">Б</div>
-            <div>
-              <div className="brand-name">Баланс Платформа</div>
-              <div className="brand-sub">Анализ изменений СПР</div>
-            </div>
+            <BrandLogo height={38} />
+            <span className="brand-divider" aria-hidden="true" />
+            <div className="brand-sub">Анализ<br />изменений СПР</div>
           </NavLink>
           <nav className="nav" aria-label="Разделы">
             <NavLink to="/runs" className="nav-link">
