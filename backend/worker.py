@@ -5,6 +5,8 @@ from backend.store import Store
 from backend.service import Service
 
 def main():
+    from backend.settings import load_local_env
+    load_local_env()
     Path("runtime").mkdir(exist_ok=True)
     store = Store()
     service = Service(store)

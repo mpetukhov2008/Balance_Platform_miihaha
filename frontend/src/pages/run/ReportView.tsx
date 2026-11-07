@@ -4,7 +4,7 @@ import type { AiReview } from "../../api/types";
 import { Icon } from "../../components/Icon";
 import { Async, Badge, ErrorAlert } from "../../components/ui";
 import { dateTime } from "../../lib/format";
-import { useAsync } from "../../lib/hooks";
+import { useAsync, usePolling } from "../../lib/hooks";
 import { useRun } from "./RunPage";
 
 const AI_STATUS: Record<AiReview["status"], [string, string, string]> = {
@@ -19,13 +19,31 @@ const AI_STATUS: Record<AiReview["status"], [string, string, string]> = {
 function AiBlock({ runId }: { runId: string }) {
   const api = useApi();
   const ai = useAsync(() => api.aiReview(runId), [runId]);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<unknown>();
+  usePolling(ai.reload, ai.data?.status === "PENDING");
+  async function generate() {
+    setStarting(true);
+    setError(undefined);
+    try {
+      await api.regenerateAiReview(runId);
+      ai.reload();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setStarting(false);
+    }
+  }
   return (
     <section className="card ai-card" data-testid="ai-review">
       <div className="card-head">
         <div className="row"><Icon name="spark" size={18} /> <h2>Независимое мнение ИИ</h2></div>
-        <button className="btn btn-sm btn-ghost" onClick={ai.reload}><Icon name="refresh" /> Обновить</button>
+        <button className="btn btn-sm btn-ghost" onClick={generate} disabled={starting || ai.data?.status === "PENDING"}>
+          <Icon name="refresh" /> {starting || ai.data?.status === "PENDING" ? "Формируется…" : "Сформировать мнение"}
+        </button>
       </div>
       <div className="card-pad stack">
+        {error !== undefined && <ErrorAlert error={error} />}
         <Async state={ai}>
           {(a) => {
             const [tone, label, hint] = AI_STATUS[a.status] ?? ["", a.status, ""];

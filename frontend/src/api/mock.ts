@@ -358,6 +358,10 @@ export class MockApiClient implements ApiClient {
   };
 
   reportUrl: C["reportUrl"] = () => "about:blank";
+  regenerateAiReview: C["regenerateAiReview"] = async (rid) => {
+    await this.ready(rid);
+    return { executionId: "demo-ai-unavailable" };
+  };
   downloadReport: C["downloadReport"] = async (rid) => {
     await this.ready(rid);
     const rows = (this.checks.get(rid) ?? []).map((c) => `<tr><td>${esc(c.LABEL)}</td><td>${c.SOURCE}</td><td>${esc(c.ARGUMENT)}</td><td>${c.CNT}/${c.TOTAL}</td><td>${c.RESULT}</td></tr>`).join("");

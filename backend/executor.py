@@ -7,6 +7,12 @@ import tempfile
 import threading
 import time
 
+class ExecutionError(RuntimeError):
+    def __init__(self, result):
+        super().__init__(result["error"])
+        self.stdout = result.get("stdout", "")
+        self.stderr = result.get("stderr", "")
+
 def execute(payload):
     mode = os.environ.get("EXECUTION_MODE", "docker")
     container = "balance-" + uuid.uuid4().hex
@@ -54,7 +60,7 @@ def execute(payload):
                 raise RuntimeError("Executor failed: "+err.read(4000).decode("utf-8",errors="replace"))
             result=json.loads(out.read())
         if "error" in result:
-            raise RuntimeError(result["error"])
+            raise ExecutionError(result)
         if not isinstance(result.get("result"), list):
             raise ValueError("Procedure must return a list")
         return result

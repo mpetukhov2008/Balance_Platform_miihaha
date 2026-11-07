@@ -1,7 +1,7 @@
 import os
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import create_engine, MetaData, Table, Column, String, Integer, JSON, Index, select, update, delete
+from sqlalchemy import create_engine, event, MetaData, Table, Column, String, Integer, JSON, Index, select, update, delete
 
 def now():
     return datetime.now(timezone.utc).isoformat()
@@ -30,10 +30,21 @@ Index("ix_member_fact",fact_members.c.run_id,fact_members.c.owner,fact_members.c
 class Store:
     def __init__(self, url=None):
         self.engine = create_engine(url or os.environ.get("DATABASE_URL", "sqlite:///runtime/balance.db"))
+        if self.engine.dialect.name == "sqlite":
+            @event.listens_for(self.engine, "connect")
+            def configure_sqlite(connection, _):
+                connection.execute("PRAGMA busy_timeout=30000")
+                connection.execute("PRAGMA journal_mode=WAL")
         metadata.create_all(self.engine)
         # Additive schema upgrade for pre-existing v0.1 databases.
         for idx in fact_members.indexes:
             idx.create(self.engine,checkfirst=True)
+
+    def put_many(self, kind, owner, items):
+        """Insert new immutable objects in one transaction (e.g. pivot tokens)."""
+        if items:
+            with self.engine.begin() as c:
+                c.execute(objects.insert(), [{"id": item["id"], "kind": kind, "owner": owner, "data": item} for item in items])
 
     def put(self, kind, owner, data):
         with self.engine.begin() as c:

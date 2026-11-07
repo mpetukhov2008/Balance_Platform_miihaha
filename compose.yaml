@@ -21,12 +21,14 @@ services:
       DATABASE_URL: postgresql+psycopg://balance:${POSTGRES_PASSWORD}@db/balance
       SOURCE_ROOT: /app/Исходники
       FULL_DATA_ROOT: /datasets
-      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:5173}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:8000}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       EXECUTION_MODE: docker
       RUNNER_IMAGE: balance-runner:local
       AI_API_URL: ${AI_API_URL:-}
+      AI_PROVIDER: ${AI_PROVIDER:-openai-compatible}
+      AI_FOLDER_ID: ${AI_FOLDER_ID:-}
       AI_API_KEY: ${AI_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-}
     ports:

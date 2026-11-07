@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any, Literal
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from backend import catalog, domain, queries
 from backend.store import Store, now, uid
@@ -131,7 +132,9 @@ def create_app(store=None):
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
-        return JSONResponse({"error": {"code": "VALIDATION_ERROR", "message": str(exc)}}, status_code=422)
+        fields = {".".join(str(p) for p in e["loc"] if p != "body"): e["msg"] for e in exc.errors()}
+        return JSONResponse({"error": {"code": "VALIDATION_ERROR", "message": "Проверьте поля формы",
+                                      "details": {"fields": fields}}}, status_code=422)
 
     def auth(request: Request):
         token = request.cookies.get("balance_session", "")
@@ -333,10 +336,12 @@ def create_app(store=None):
         except ValueError:
             fail("PIVOT_TOO_WIDE","Добавьте фильтры или уменьшите число колонок")
         cells=[]
+        tokens=[]
         for ri,ci,value,cell_filters in groups:
             token=uid()
-            db.put("drill",owner,{"id":token,"runId":id,"expires":time.time()+3600,"filters":cell_filters})
+            tokens.append({"id":token,"runId":id,"expires":time.time()+3600,"filters":cell_filters})
             cells.append(dict(rowIndex=ri,columnIndex=ci,value=value,drilldownToken=token))
+        db.put_many("drill",owner,tokens)
         return dict(rowFields=body.rows,columnFields=body.columns,rowKeys=rows,columnKeys=columns,
             cells=cells,totalRows=total,page=body.page,pageSize=body.pageSize,
             measure={"id":"SUM_CNT","label":"Участия заявок в группах","additive":True},uniqueApps=unique)
@@ -396,7 +401,21 @@ def create_app(store=None):
 
     @app.get(base + "/runs/{id}/ai-review")
     def ai(id: str, s=Depends(auth)):
-        return ready(s, id)["ai"]
+        result = ready(s, id)
+        pending = any(j["type"] == "AI" and j["payload"].get("runId") == id
+                      and j["status"] in ("QUEUED", "RUNNING") for j in db.all("job", s["user"]["id"]))
+        if pending:
+            return dict(status="PENDING", text=None, error=None, generatedAt=None, reportRevision=result["reportRevision"])
+        return result["ai"]
+
+    @app.post(base + "/runs/{id}/ai-review", status_code=202)
+    def regenerate_ai(id: str, s=Depends(auth)):
+        ready(s, id)
+        owner = s["user"]["id"]
+        pending = next((j for j in db.all("job", owner) if j["type"] == "AI"
+                        and j["payload"].get("runId") == id and j["status"] in ("QUEUED", "RUNNING")), None)
+        job = pending or svc.job(owner, "AI", {"runId": id})
+        return {"executionId": job["id"]}
 
     @app.post(base + "/script-executions", status_code=202)
     def execute_script(body: Execution, s=Depends(auth)):
@@ -453,6 +472,16 @@ def create_app(store=None):
     @app.get(base + "/runs/{id}/report.html", response_class=HTMLResponse)
     def download(id: str, s=Depends(auth)):
         return HTMLResponse(report_html(id, s), headers={"Content-Disposition":'attachment; filename="report.html"'})
+
+    frontend = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+    if (frontend / "index.html").is_file():
+        app.mount("/assets", StaticFiles(directory=frontend / "assets"), name="frontend-assets")
+
+        @app.get("/{path:path}", include_in_schema=False)
+        def frontend_page(path: str):
+            if path == "api" or path.startswith(("api/", "assets/")):
+                raise HTTPException(404, "Not found")
+            return FileResponse(frontend / "index.html")
 
     return app
 

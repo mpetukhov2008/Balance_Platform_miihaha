@@ -3,6 +3,7 @@ import contextlib
 import io
 import json
 import sys
+import traceback
 from backend.domain import Mart
 
 class LimitedOutput(io.StringIO):
@@ -35,6 +36,7 @@ def execute(payload):
                 check_id = None
         return {"result": result, "checkId": check_id, "stdout": out.getvalue(), "stderr": err.getvalue()}
     except Exception as exc:
+        err.write(traceback.format_exc())
         return {"error": f"{type(exc).__name__}: {exc}", "stdout": out.getvalue(), "stderr": err.getvalue()}
 
 if __name__ == "__main__":

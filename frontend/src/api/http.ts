@@ -112,6 +112,7 @@ export class HttpApiClient implements ApiClient {
   checkExecution: C["checkExecution"] = (id, executionId) =>
     this.request("GET", `/runs/${enc(id)}/check-executions/${enc(executionId)}`);
   aiReview: C["aiReview"] = (id) => this.request("GET", `/runs/${enc(id)}/ai-review`);
+  regenerateAiReview: C["regenerateAiReview"] = (id) => this.request("POST", `/runs/${enc(id)}/ai-review`, {});
 
   reportUrl: C["reportUrl"] = (id) => `${this.base}/runs/${enc(id)}/report`;
   downloadReport: C["downloadReport"] = (id) => this.request<Blob>("GET", `/runs/${enc(id)}/report.html`, undefined, true);

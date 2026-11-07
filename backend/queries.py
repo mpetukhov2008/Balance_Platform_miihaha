@@ -67,7 +67,6 @@ def pivot(engine,owner,run_id,row_fields,col_fields,filters,page,page_size):
             ck=tuple(values[len(re):len(re)+len(ce)])
             cells.append((row_keys.index(rk),col_keys.index(ck),values[-1],
                 filters+[{"field":k,"op":"exact","value":v} for k,v in zip(row_fields+col_fields,rk+ck)]))
-        unique=c.execute(select(func.count()).select_from(member_query(owner,run_id,filters).subquery())).scalar_one()
     return row_keys,col_keys,cells,total,unique
 
 def applications(engine,owner,run_id,filters,app_ids,page,page_size):

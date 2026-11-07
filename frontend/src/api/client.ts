@@ -93,6 +93,7 @@ export interface ApiClient {
   executeCheck(runId: string, body: { scriptId: string; params: Record<string, unknown> }): Promise<{ executionId: string }>;
   checkExecution(runId: string, executionId: string): Promise<CheckExecution>;
   aiReview(runId: string): Promise<AiReview>;
+  regenerateAiReview(runId: string): Promise<{ executionId: string }>;
 
   /** URL документа для открытия в новой вкладке (сессия браузера передаётся cookie). */
   reportUrl(runId: string): string;

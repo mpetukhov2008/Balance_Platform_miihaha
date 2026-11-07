@@ -126,3 +126,20 @@ def test_csrf_validation_and_script_error(setup):
     r=c.get("/api/v1/script-executions/"+job.json()["executionId"])
     assert r.json()["status"]=="FAILED"
     assert "broken" in r.json()["error"]
+    assert "ValueError: broken" in r.json()["stderr"]
+
+
+def test_regenerate_ai_without_normalization(setup, monkeypatch):
+    c, app = setup
+    run_id = make_run(c, app)
+    base = f"/api/v1/runs/{run_id}"
+    monkeypatch.setattr(app.state.service, "ai_review", lambda summary, checks:
+                        dict(status="READY", text="Проверенное мнение", error=None, generatedAt="2026-11-07T00:00:00Z"))
+    first = c.post(base + "/ai-review")
+    assert first.status_code == 202
+    assert c.post(base + "/ai-review").json() == first.json()
+    assert c.get(base + "/ai-review").json()["status"] == "PENDING"
+    drain(app)
+    assert c.get(base + "/ai-review").json()["status"] == "READY"
+    assert "Проверенное мнение" in c.get(base + "/report").text
+    assert c.get(base + "/applications/I32554354/raw?source=BEFORE").json()["document"]
