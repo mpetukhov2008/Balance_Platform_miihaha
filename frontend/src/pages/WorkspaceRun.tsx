@@ -76,7 +76,7 @@ export function WorkspaceRun({ script, params, paramsValid = true, dirty, before
       </div>
       <div className="row">
         {isCheck ? (
-          <label className="field" style={{ minWidth: 320 }}>
+          <label className="field" style={{ width: "min(320px, 100%)", minWidth: 0 }}>
             <span>Завершённый прогон (готовая витрина)</span>
             <select className="select" value={ctxRun} disabled={busy} title={busy ? "Прогон нельзя сменить, пока задача выполняется" : undefined} onChange={(e) => setRunId(e.target.value)}>
               {readyRuns.length === 0 && <option value="">нет завершённых прогонов</option>}
@@ -84,7 +84,7 @@ export function WorkspaceRun({ script, params, paramsValid = true, dirty, before
             </select>
           </label>
         ) : (
-          <label className="field" style={{ minWidth: 320 }}>
+          <label className="field" style={{ width: "min(320px, 100%)", minWidth: 0 }}>
             <span>Датасет для предпросмотра</span>
             <select className="select" value={ctxDs} disabled={busy} onChange={(e) => setDatasetId(e.target.value)}>
               {datasets.data?.items.map((d) => <option key={d.id} value={d.id} disabled={d.status !== "READY"}>{d.name}</option>)}

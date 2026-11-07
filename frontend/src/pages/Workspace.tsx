@@ -28,7 +28,20 @@ export function WorkspacePage() {
   const [validParams, setValidParams] = useState(true);
   const [saveError, setSaveError] = useState<unknown>();
   const [saving, setSaving] = useState(false);
-  const dark = typeof window !== "undefined" && (document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && window.matchMedia?.("(prefers-color-scheme: dark)").matches));
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncTheme = () => setDark(document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && systemTheme.matches));
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    systemTheme.addEventListener("change", syncTheme);
+    syncTheme();
+    return () => {
+      observer.disconnect();
+      systemTheme.removeEventListener("change", syncTheme);
+    };
+  }, []);
 
   // Новый скрипт: шаблон берётся из каталога контрактов сервера.
   useEffect(() => {

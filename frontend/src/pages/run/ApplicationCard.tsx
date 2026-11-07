@@ -97,6 +97,7 @@ export function ApplicationCard() {
               <div className="grid cols-2">
                 <section className="card">
                   <div className="card-head"><h2>Разрезы</h2></div>
+                  <div className="table-wrap">
                   <table className="t">
                     <thead><tr><th>Поле</th><th>BEFORE</th><th>AFTER</th></tr></thead>
                     <tbody>
@@ -113,6 +114,7 @@ export function ApplicationCard() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </section>
                 <section className="card">
                   <div className="card-head"><h2>Наблюдаемые изменения</h2><span className="hint">{d.decisionEvidence.length}</span></div>

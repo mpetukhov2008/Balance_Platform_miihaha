@@ -115,7 +115,7 @@ table.t { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 
   .login-wrap { grid-template-columns: 1fr; }
   .login-side { display: none; }
   .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cols-2, .cols-3 { grid-template-columns: 1fr; }
+  .cols-2, .cols-3 { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Значения */
