@@ -143,3 +143,23 @@ def test_regenerate_ai_without_normalization(setup, monkeypatch):
     assert c.get(base + "/ai-review").json()["status"] == "READY"
     assert "Проверенное мнение" in c.get(base + "/report").text
     assert c.get(base + "/applications/I32554354/raw?source=BEFORE").json()["document"]
+
+
+def test_successful_check_preview_keeps_output_without_changing_report(setup):
+    c, app = setup
+    run_id = make_run(c, app)
+    base = f"/api/v1/runs/{run_id}"
+    before = c.get(base + "/check-results").json()
+    template = c.get("/api/v1/script-contracts").json()["items"][-1]["template"]
+    code = "import sys\nprint('check preview stdout')\nprint('check preview stderr', file=sys.stderr)\n" + template
+    script = c.post("/api/v1/scripts", json={"name": "Check output", "kind": "CHECK",
+                    "contractId": "check-v1", "code": code}).json()
+    response = c.post("/api/v1/script-executions", json={"scriptId": script["id"], "runId": run_id})
+    assert response.status_code == 202, response.text
+    drain(app)
+    job = c.get("/api/v1/script-executions/" + response.json()["executionId"]).json()
+    assert job["status"] == "SUCCEEDED", job
+    assert "check preview stdout" in job["stdout"]
+    assert "check preview stderr" in job["stderr"]
+    assert len(job["previewRows"]) == 1
+    assert c.get(base + "/check-results").json() == before

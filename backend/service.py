@@ -50,11 +50,13 @@ class Service:
         return execute(dict(payload, code=script["code"], kind=script["kind"],
                             params={**script["params"], **binding.get("params", {})}))
 
-    def checks(self, owner, bindings, rows, seg, with_ids=False):
+    def checks(self, owner, bindings, rows, seg, with_ids=False, on_output=None):
         result = []
         seen = set()
         for b in bindings:
             output = self.invoke(b, rows=rows, segments=seg)
+            if on_output is not None:
+                on_output(output)
             check_id = output["checkId"]
             if not isinstance(check_id, str) or not check_id or check_id in seen:
                 raise ValueError("CHECK.id must be unique and nonempty")
@@ -171,7 +173,8 @@ class Service:
                 binding = p["binding"]
                 if binding["script"]["kind"] == "CHECK":
                     result = self.store.get("result", owner, p["runId"])
-                    rows, check_ids = self.checks(owner, [binding], result["rows"], result["segments"], with_ids=True)
+                    rows, check_ids = self.checks(owner, [binding], result["rows"], result["segments"], with_ids=True,
+                        on_output=lambda output: job.update(stdout=output["stdout"], stderr=output["stderr"]))
                     if job["type"] == "CHECK":
                         # Single worker serializes report changes. Re-read before commit.
                         result = self.store.get("result", owner, p["runId"], sections=("checks",))
