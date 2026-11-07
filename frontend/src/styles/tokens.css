@@ -1,0 +1,72 @@
+/* Чёрная палитра с оранжевым акцентом Claude (#D97757). Все цвета компонентов берутся отсюда. */
+:root {
+  color-scheme: light;
+  --bg: #f3f3f5;
+  --bg-elev: #ffffff;
+  --bg-sunken: #f1f1f3;
+  --bg-hover: #f6f6f8;
+  --border: #ececf0;
+  --border-strong: #dcdce2;
+  --text: #121214;
+  --text-2: #45454d;
+  --text-3: #686873;
+  --ink: #121214;
+  --ink-2: #1e1e22;
+  --on-ink: #ffffff;
+  --pill: #121214;
+  --on-pill: #ffffff;
+  --accent: #d97757;
+  --accent-hover: #c96442;
+  --accent-soft: #fbefe9;
+  --accent-text: #b45a3c;
+  --on-accent: #121214;
+  --ok: #12945a;
+  --ok-soft: #e7f6ee;
+  --bad: #e5383b;
+  --bad-soft: #fdecec;
+  --warn: #b7791f;
+  --warn-soft: #fbf3e2;
+  --muted-soft: #f0f0f3;
+  --before: #3d3d45;
+  --before-soft: #ececf0;
+  --after: #b45a3c;
+  --after-soft: #fbefe9;
+  --new: #12945a;
+  --lost: #e5383b;
+  --changed: #b7791f;
+  --heat: 217, 119, 87;
+  --shadow-1: 0 1px 2px rgba(18, 18, 20, .04), 0 4px 16px rgba(18, 18, 20, .04);
+  --shadow-2: 0 12px 40px rgba(18, 18, 20, .10), 0 2px 8px rgba(18, 18, 20, .05);
+  --radius: 24px;
+  --radius-sm: 14px;
+  --font: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0c0c0e; --bg-elev: #17171a; --bg-sunken: #121215; --bg-hover: #1f1f23;
+    --border: #26262b; --border-strong: #35353c;
+    --text: #f4f4f6; --text-2: #b9b9c2; --text-3: #9b9ba7;
+    --ink: #000000; --ink-2: #141416; --on-ink: #ffffff; --pill: #f4f4f6; --on-pill: #121214;
+    --accent: #d97757; --accent-hover: #e38b6d; --accent-soft: #2f1d16; --accent-text: #eb9b80; --on-accent: #121214;
+    --ok: #38d18e; --ok-soft: #10291c; --bad: #ff6467; --bad-soft: #351719; --warn: #f0b44c; --warn-soft: #33270f; --muted-soft: #1f1f23;
+    --before: #c9c9d2; --before-soft: #26262b; --after: #eb9b80; --after-soft: #2f1d16;
+    --new: #38d18e; --lost: #ff6467; --changed: #f0b44c; --heat: 217, 119, 87;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .5); --shadow-2: 0 16px 48px rgba(0, 0, 0, .55);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c0c0e; --bg-elev: #17171a; --bg-sunken: #121215; --bg-hover: #1f1f23;
+  --border: #26262b; --border-strong: #35353c;
+  --text: #f4f4f6; --text-2: #b9b9c2; --text-3: #9b9ba7;
+  --ink: #000000; --ink-2: #141416; --on-ink: #ffffff; --pill: #f4f4f6; --on-pill: #121214;
+  --accent: #d97757; --accent-hover: #e38b6d; --accent-soft: #2f1d16; --accent-text: #eb9b80; --on-accent: #121214;
+  --ok: #38d18e; --ok-soft: #10291c; --bad: #ff6467; --bad-soft: #351719; --warn: #f0b44c; --warn-soft: #33270f; --muted-soft: #1f1f23;
+  --before: #c9c9d2; --before-soft: #26262b; --after: #eb9b80; --after-soft: #2f1d16;
+  --new: #38d18e; --lost: #ff6467; --changed: #f0b44c; --heat: 217, 119, 87;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .5); --shadow-2: 0 16px 48px rgba(0, 0, 0, .55);
+}

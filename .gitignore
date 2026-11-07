@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+runtime/
+data/
+Исходники/data/
+handoff/_transfer/
+handoff/Claude_Handoff.zip
+handoff/claude/Исходники/
+node_modules/
+dist/
