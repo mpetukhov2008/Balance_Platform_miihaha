@@ -1,4 +1,4 @@
-/* Оранжево-чёрная палитра «Баланс Платформа». Все цвета компонентов берутся отсюда. */
+/* Чёрная палитра с оранжевым акцентом Claude (#D97757). Все цвета компонентов берутся отсюда. */
 :root {
   color-scheme: light;
   --bg: #f3f3f5;
@@ -15,10 +15,10 @@
   --on-ink: #ffffff;
   --pill: #121214;
   --on-pill: #ffffff;
-  --accent: #ff6a00;
-  --accent-hover: #f05f00;
-  --accent-soft: #fff1e6;
-  --accent-text: #d45500;
+  --accent: #d97757;
+  --accent-hover: #c96442;
+  --accent-soft: #fbefe9;
+  --accent-text: #b45a3c;
   --on-accent: #121214;
   --ok: #12945a;
   --ok-soft: #e7f6ee;
@@ -29,12 +29,12 @@
   --muted-soft: #f0f0f3;
   --before: #3d3d45;
   --before-soft: #ececf0;
-  --after: #d45500;
-  --after-soft: #fff1e6;
+  --after: #b45a3c;
+  --after-soft: #fbefe9;
   --new: #12945a;
   --lost: #e5383b;
   --changed: #b7791f;
-  --heat: 255, 106, 0;
+  --heat: 217, 119, 87;
   --shadow-1: 0 1px 2px rgba(18, 18, 20, .04), 0 4px 16px rgba(18, 18, 20, .04);
   --shadow-2: 0 12px 40px rgba(18, 18, 20, .10), 0 2px 8px rgba(18, 18, 20, .05);
   --radius: 24px;
@@ -50,10 +50,10 @@
     --border: #26262b; --border-strong: #35353c;
     --text: #f4f4f6; --text-2: #b9b9c2; --text-3: #7e7e88;
     --ink: #000000; --ink-2: #141416; --on-ink: #ffffff; --pill: #f4f4f6; --on-pill: #121214;
-    --accent: #ff7a1f; --accent-hover: #ff8c3d; --accent-soft: #2e1a0c; --accent-text: #ff9a52; --on-accent: #121214;
+    --accent: #d97757; --accent-hover: #e38b6d; --accent-soft: #2f1d16; --accent-text: #eb9b80; --on-accent: #121214;
     --ok: #38d18e; --ok-soft: #10291c; --bad: #ff6467; --bad-soft: #351719; --warn: #f0b44c; --warn-soft: #33270f; --muted-soft: #1f1f23;
-    --before: #c9c9d2; --before-soft: #26262b; --after: #ff9a52; --after-soft: #2e1a0c;
-    --new: #38d18e; --lost: #ff6467; --changed: #f0b44c; --heat: 255, 122, 31;
+    --before: #c9c9d2; --before-soft: #26262b; --after: #eb9b80; --after-soft: #2f1d16;
+    --new: #38d18e; --lost: #ff6467; --changed: #f0b44c; --heat: 217, 119, 87;
     --shadow-1: 0 1px 2px rgba(0, 0, 0, .5); --shadow-2: 0 16px 48px rgba(0, 0, 0, .55);
   }
 }
@@ -64,9 +64,9 @@
   --border: #26262b; --border-strong: #35353c;
   --text: #f4f4f6; --text-2: #b9b9c2; --text-3: #7e7e88;
   --ink: #000000; --ink-2: #141416; --on-ink: #ffffff; --pill: #f4f4f6; --on-pill: #121214;
-  --accent: #ff7a1f; --accent-hover: #ff8c3d; --accent-soft: #2e1a0c; --accent-text: #ff9a52; --on-accent: #121214;
+  --accent: #d97757; --accent-hover: #e38b6d; --accent-soft: #2f1d16; --accent-text: #eb9b80; --on-accent: #121214;
   --ok: #38d18e; --ok-soft: #10291c; --bad: #ff6467; --bad-soft: #351719; --warn: #f0b44c; --warn-soft: #33270f; --muted-soft: #1f1f23;
-  --before: #c9c9d2; --before-soft: #26262b; --after: #ff9a52; --after-soft: #2e1a0c;
-  --new: #38d18e; --lost: #ff6467; --changed: #f0b44c; --heat: 255, 122, 31;
+  --before: #c9c9d2; --before-soft: #26262b; --after: #eb9b80; --after-soft: #2f1d16;
+  --new: #38d18e; --lost: #ff6467; --changed: #f0b44c; --heat: 217, 119, 87;
   --shadow-1: 0 1px 2px rgba(0, 0, 0, .5); --shadow-2: 0 16px 48px rgba(0, 0, 0, .55);
 }
