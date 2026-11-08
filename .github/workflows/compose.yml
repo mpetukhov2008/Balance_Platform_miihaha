@@ -5,6 +5,8 @@ on:
     paths: ['backend/**', 'frontend/**', 'infra/**', 'compose.yaml', '.env.example', '.dockerignore', 'scripts/**', '.github/workflows/compose.yml']
   pull_request:
     paths: ['backend/**', 'frontend/**', 'infra/**', 'compose.yaml', '.env.example', '.dockerignore', 'scripts/**', '.github/workflows/compose.yml']
+permissions:
+  contents: read
 jobs:
   full-scenario:
     runs-on: ubuntu-latest
@@ -16,6 +18,8 @@ jobs:
       ALLOW_REGISTRATION: 'true'
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -52,6 +56,24 @@ jobs:
               assert c.post('/auth/login', json=body).status_code == 200
               assert c.get('/limits').json()['aiRequestsUsed'] == 0
               assert c.get('/runs').json()['total'] == 0
+          PY
+      - name: API container runs without privileges or AI secrets
+        run: |
+          docker compose exec -T api python - <<'PY'
+          import os, shutil
+          assert os.getuid() == 65534
+          assert shutil.which('docker') is None
+          assert not os.path.exists('/var/run/docker.sock')
+          assert not os.environ.get('AI_API_KEY')
+          status = open('/proc/self/status').read()
+          assert 'CapEff:\t0000000000000000' in status
+          assert 'NoNewPrivs:\t1' in status
+          try:
+              open('/app/unexpected-write', 'w').close()
+          except OSError:
+              pass
+          else:
+              raise AssertionError('API root filesystem is writable')
           PY
       - name: Upload private paired dataset through API
         id: upload

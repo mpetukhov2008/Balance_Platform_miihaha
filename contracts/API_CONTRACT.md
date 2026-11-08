@@ -1,6 +1,6 @@
-# API v0.1 — договор Codex ↔ Claude
+# API v0.1 — контракт приложения
 
-Статус: подготовленный контракт для начала параллельной разработки. Сервер и эти endpoints ещё не реализованы. Это решение команды, не выданный заказчиком HTTP API. После реализации Codex предоставляет OpenAPI и подтверждает соответствие; изменения передаются Claude явно. Версия относится к договору интерфейсов, не к версионированию пользовательского кода.
+Статус: реализованный контракт серверного и браузерного приложения. OpenAPI описывает запросы; этот документ уточняет семантику ответов и сценариев.
 
 ## Общие правила
 
@@ -19,6 +19,11 @@
 
 | Метод и путь | Запрос | Ответ |
 |---|---|---|
+| GET /auth/options | — | {registrationEnabled,passwordMinLength} |
+| POST /auth/register | {username,password} | {ok:true}, затем отдельный вход |
+| GET /limits | — | суточные квоты ИИ и потребление |
+| GET /datasets/upload-options | — | ограничения загрузки |
+| POST /datasets?name=... | application/zip, cookie и CSRF | Dataset, HTTP 201 |
 | POST /auth/login | {username,password} | Session |
 | GET /auth/session | — | Session |
 | POST /auth/logout | пустое тело, CSRF | {ok:true} |
@@ -29,7 +34,7 @@
 
 Session = {user:{id,username},csrfToken:string}.
 
-Dataset = {id:string,name:string,kind:"SAMPLES"|"FULL"|"CUSTOM",status:"READY"|"UNAVAILABLE",appCount:number|null,description:string}. Пока полного data нет, каталог не должен утверждать, что FULL доступен. Регистрацию серверных папок делает Codex; загрузка произвольных директорий через браузер не входит в v0.1.
+Dataset = {id:string,name:string,kind:"SAMPLES"|"FULL"|"CUSTOM",status:"READY"|"UNAVAILABLE",appCount:number|null,description:string}. Встроенные наборы — samples и full. Личные ZIP-наборы сохраняются в SQL и видны только владельцу.
 
 ScriptKind = NORMALIZE | COMPARE | AGGREGATE | CHECK.
 
@@ -188,13 +193,14 @@ GET /runs/{id}/applications/{appId}/raw?source=BEFORE → {APP_ID:string,SOURCE:
 | GET /runs/{id}/check-results?page=1&pageSize=50 | — | Page<CheckResult> & {reportRevision:number} |
 | POST /runs/{id}/check-executions | {scriptId:string,params:object} | {executionId:string} |
 | GET /runs/{id}/check-executions/{executionId} | — | {id,status,error:string|null,reportRevision:number|null} |
+| POST /runs/{id}/ai-review | пустой объект | {executionId:string}, фоновая генерация |
 | GET /runs/{id}/ai-review | — | AiReview |
 | GET /runs/{id}/report | — | text/html, документ в браузере |
 | GET /runs/{id}/report.html | — | text/html, Content-Disposition: attachment |
 
-CheckResult = {rowId:string,checkId:string,LABEL:string,SOURCE:"BEFORE"|"AFTER",ARGUMENT:string,CNT:number,TOTAL:number,METRIC:number|string|null,APP_IDS:string[],RESULT:"PASS"|"FAIL",CONFIDENCE:"HIGH"|"LOW"}.
+CheckResult = {rowId:string,checkId:string,LABEL:string,SOURCE:"BEFORE"|"AFTER",ARGUMENT:string,CNT:number,TOTAL:number,METRIC:number,APP_IDS:string[],RESULT:"PASS"|"FAIL",CONFIDENCE:"HIGH"|"LOW"}.
 
-В первичных проверках METRIC числовая; расширенный HTTP тип позволяет будущие пользовательские значения, не приписывая им единицы. Строки рендерятся в том виде, который возвращён, без предположений о процентах. Форматирование единиц может позднее добавляться отдельной метаинформацией.
+METRIC должна быть конечным числом. Единицы определяет проверка; клиент не приписывает метрике проценты автоматически.
 
 Новая проверка выполняется сервером на готовой витрине без повторной нормализации, затем атомарно обновляет единый отчёт и HTML. Повторный запуск того же CHECK.id заменяет его прошлые строки, не создаёт незаметные дубли. reportRevision — номер пересборки отчёта, не версия кода. Старые checkRowId после замены могут стать недействительными; обновить таблицу. Ошибка CHECK отображается как ошибка исполнения, не как PASS. После успешного check-execution UI перечитывает check-results и ai-review.
 
@@ -202,17 +208,6 @@ AiReview = {status:"DISABLED"|"PENDING"|"READY"|"UNAVAILABLE"|"FAILED"|"STALE",t
 
 HTML создаёт сервер: объединённые проверки, сводка, ИИ-статус и абсолютные ссылки в приложение. Для скачивания через fetch проверять HTTP-статус до преобразования в Blob. Не сохранять ответ с ошибкой как report.html. Ссылки из скачанного документа не обходят аутентификацию.
 
-## 8. Mock-адаптер и интеграция
+## 8. Браузерный клиент
 
-Claude создаёт один интерфейс ApiClient с методами, соответствующими таблицам выше, и две реализации: HttpApiClient и MockApiClient. Компоненты не знают режим и не импортируют фикстуры напрямую.
-
-Для mock:
-
-- Использовать настоящие поля и enum. Подписывать экран «Демонстрационные данные».
-- Можно импортировать 59 demo facts для просмотра раскладки, но у них нет реальных APP_IDS. Нельзя имитировать точный drill-down этих фактов на реальные samples.
-- Для сквозного клика создать отдельный маленький согласованный набор: факты, заявки, сравнение и sample проверок с совпадающими counts/ID. Подписать искусственный характер. Не выдавать его за вычисленный результат реального нормализатора.
-- Отдельно показать четыре настоящие пары raw из samples. Отличать подтверждённые поля raw от ещё не рассчитанных KPI.
-- Предусмотреть delayed RUNNING, FAILED и 401, не только успешный happy path.
-- Реальный режим не переключается сам на mocks при ошибке API.
-
-Вопросы изменения контракта записывать в frontend/CONTRACT_REQUESTS.md с причиной и затронутыми экранами. Не менять endpoints молча и не заявлять реальную интеграцию после тестирования только mocks.
+Единый ApiClient реализован HttpApiClient и MockApiClient. Реальный API используется по умолчанию; демо включается только явным VITE_USE_MOCK_API=true. Ошибка реального API не переключает приложение на искусственные данные. В демо используются три искусственные заявки, Python и серверная загрузка ZIP не имитируются как реальные вычисления. Вопросы единиц METRIC и типов предметных значений решаются контрактом проверки, а не догадкой интерфейса.

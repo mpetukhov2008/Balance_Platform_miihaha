@@ -1,6 +1,6 @@
 # Frontend — Баланс Платформа
 
-Браузерный интерфейс системы анализа изменений СПР: React 19 + TypeScript + Vite 7. Работает с API v0.1 (`/api/v1`) из `handoff/claude/API_CONTRACT.md`.
+Браузерный интерфейс системы анализа изменений СПР: React 19 + TypeScript + Vite 7. Работает с API v0.1 (`/api/v1`) из `contracts/API_CONTRACT.md`.
 
 ## Запуск
 

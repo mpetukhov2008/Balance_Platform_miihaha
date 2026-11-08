@@ -16,7 +16,16 @@ services:
   api:
     build:
       context: .
-      dockerfile: infra/Dockerfile
+      dockerfile: Dockerfile
+    user: '65534:65534'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 1g
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,uid=65534,gid=65534
+      - /app/runtime:rw,noexec,nosuid,size=16m,uid=65534,gid=65534
     environment: &app-env
       DATABASE_URL: postgresql+psycopg://balance:${POSTGRES_PASSWORD}@db/balance
       SOURCE_ROOT: /app/Исходники
@@ -55,11 +64,6 @@ services:
       EXECUTION_MODE: docker
       RUNNER_IMAGE: balance-runner:local
       SCRIPT_TIMEOUT: ${SCRIPT_TIMEOUT:-180}
-      AI_API_URL: ${AI_API_URL:-}
-      AI_PROVIDER: ${AI_PROVIDER:-openai-compatible}
-      AI_FOLDER_ID: ${AI_FOLDER_ID:-}
-      AI_API_KEY: ${AI_API_KEY:-}
-      AI_MODEL: ${AI_MODEL:-}
     ports:
       - 127.0.0.1:8000:8000
     volumes:
@@ -72,7 +76,13 @@ services:
       context: .
       dockerfile: infra/Dockerfile
     command: [python, -m, backend.worker]
-    environment: *app-env
+    environment:
+      <<: *app-env
+      AI_API_URL: ${AI_API_URL:-}
+      AI_PROVIDER: ${AI_PROVIDER:-openai-compatible}
+      AI_FOLDER_ID: ${AI_FOLDER_ID:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${DATA_DIR:-./Исходники/data/RUN-20260827-0001/RESULTS}:/datasets:ro

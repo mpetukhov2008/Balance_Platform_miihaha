@@ -1,4 +1,4 @@
-// DTO по handoff/claude/API_CONTRACT.md (v0.1). Имена предметных полей — как в контракте.
+// DTO по contracts/API_CONTRACT.md (v0.1). Имена предметных полей — как в контракте.
 
 export type Page<T> = { items: T[]; total: number; page: number; pageSize: number };
 
