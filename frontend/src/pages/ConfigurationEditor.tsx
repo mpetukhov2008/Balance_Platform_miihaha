@@ -82,7 +82,7 @@ export function ConfigurationEditor() {
   if (loadError) return <ErrorAlert error={loadError} onRetry={() => (datasets.reload(), scripts.reload(), existing.reload())} />;
   if (!form || !scripts.data || !datasets.data) return <Loading />;
 
-  const set = (patch: Partial<ConfigurationBody>) => (setForm({ ...form, ...patch }), setSaved(false));
+  const set = (patch: Partial<ConfigurationBody>) => (setForm((current) => current ? { ...current, ...patch } : current), setSaved(false));
   const validity = (key: string) => (ok: boolean) => setInvalid((v) => ({ ...v, [key]: !ok }));
   const hasInvalid = Object.values(invalid).some(Boolean);
   const nameMissing = !form.name.trim();

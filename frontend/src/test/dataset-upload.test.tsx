@@ -21,7 +21,8 @@ describe("Загрузка своего датасета", () => {
   it("выбирает загруженный датасет и сохраняет его в конфигурации", async () => {
     const api = await editor();
     const archive = new File(["zip bytes"], "strategy.zip", { type: "application/zip" });
-    const upload = vi.spyOn(api, "uploadDataset").mockResolvedValue(dataset);
+    let completeUpload!: (value: Dataset) => void;
+    const upload = vi.spyOn(api, "uploadDataset").mockReturnValue(new Promise<Dataset>((resolve) => { completeUpload = resolve; }));
     const save = vi.spyOn(api, "createConfiguration");
     fireEvent.change(screen.getByPlaceholderText("Например: стратегия v42 — полный датасет"), { target: { value: "Сравнение новой стратегии" } });
     fireEvent.change(screen.getByLabelText("ZIP-архив датасета"), { target: { files: [archive] } });
@@ -29,11 +30,14 @@ describe("Загрузка своего датасета", () => {
     const submit = screen.getByRole("button", { name: "Загрузить датасет" }) as HTMLButtonElement;
     await waitFor(() => expect(submit.disabled).toBe(false));
     fireEvent.click(submit);
+    await waitFor(() => expect(upload).toHaveBeenCalledWith("Новая стратегия", archive));
+    fireEvent.change(screen.getByPlaceholderText("Например: стратегия v42 — полный датасет"), { target: { value: "Название изменено во время загрузки" } });
+    completeUpload(dataset);
     await screen.findByRole("status");
     expect(upload).toHaveBeenCalledWith("Новая стратегия", archive);
     expect(screen.getByRole("button", { name: /Новая стратегия готов/ }).className).toContain("on");
     fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
-    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ datasetId: "custom-new" })));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ datasetId: "custom-new", name: "Название изменено во время загрузки" })));
   });
 
   it("показывает ошибку проверки сервера и позволяет повторить загрузку", async () => {
