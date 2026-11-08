@@ -7,8 +7,6 @@ team-local.env
 runtime/
 data/
 Исходники/data/
-handoff/_transfer/
-handoff/Claude_Handoff.zip
-handoff/claude/Исходники/
+handoff/
 node_modules/
 dist/

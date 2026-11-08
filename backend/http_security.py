@@ -1,13 +1,15 @@
 import asyncio
 import time
 from starlette.responses import JSONResponse
+from starlette.requests import Request
 from starlette.concurrency import run_in_threadpool
-from backend.security import LimitExceeded, reserve, number, enabled, registration_enabled
+from backend.security import LimitExceeded, reserve, number, enabled, registration_enabled, session_for_token, csrf_matches, origin_allowed
 
 
 class SecurityMiddleware:
     def __init__(self, app, store):
         self.app, self.store = app, store
+        self.upload_slots = asyncio.Semaphore(2)
 
     async def __call__(self, scope, receive, send):
         if scope['type'] != 'http':
@@ -48,38 +50,56 @@ class SecurityMiddleware:
             except LimitExceeded as error:
                 return await reject(429, 'RATE_LIMIT', str(error), {'Retry-After': str(error.retry_after)})
 
-        if scope['method'] in ('POST', 'PATCH', 'PUT'):
-            uploading = scope['method'] == 'POST' and scope['path'] == '/api/v1/datasets'
-            cap = number('MAX_DATASET_ARCHIVE_BYTES', 32 * 1024 * 1024) if uploading else number('MAX_REQUEST_BYTES', 1048576)
-            content_length = next((v for k, v in scope.get('headers', []) if k == b'content-length'), None)
-            if content_length is not None:
-                try:
-                    if int(content_length) > cap:
-                        return await reject(413, 'BODY_TOO_LARGE', 'Слишком большой запрос.')
-                except ValueError:
-                    return await reject(400, 'INVALID_LENGTH', 'Неверная длина запроса.')
-            messages, size = [], 0
-            deadline = time.monotonic() + (60 if uploading else 15)
-            while True:
-                try:
-                    message = await asyncio.wait_for(receive(), max(.01, deadline - time.monotonic()))
-                except asyncio.TimeoutError:
-                    return await reject(408, 'BODY_TIMEOUT', 'Истекло время загрузки запроса.')
-                if message['type'] == 'http.disconnect':
-                    return
-                size += len(message.get('body', b''))
-                if size > cap:
-                    return await reject(413, 'BODY_TOO_LARGE', 'Слишком большой запрос.')
-                messages.append(message)
-                if not message.get('more_body', False):
-                    break
-            cursor = iter(messages)
-            original_receive = receive
+        uploading = scope['method'] == 'POST' and scope['path'] == '/api/v1/datasets'
+        if uploading:
+            request = Request(scope)
+            session = await run_in_threadpool(session_for_token, self.store, request.cookies.get('balance_session', ''))
+            if not session:
+                return await reject(401, 'UNAUTHENTICATED', 'Войдите в приложение')
+            if not csrf_matches(request.headers.get('x-csrf-token', ''), session['csrfToken']):
+                return await reject(403, 'CSRF', 'Недействительный CSRF token')
+            if not origin_allowed(request.headers.get('origin')):
+                return await reject(403, 'ORIGIN', 'Недопустимый Origin')
+            if self.upload_slots.locked():
+                return await reject(429, 'RATE_LIMIT', 'Сервис загрузки занят. Попробуйте позже.', {'Retry-After': '2'})
+            await self.upload_slots.acquire()
 
-            async def replay():
-                try:
-                    return next(cursor)
-                except StopIteration:
-                    return await original_receive()
-            receive = replay
-        await self.app(scope, receive, secured_send)
+        try:
+            if scope['method'] in ('POST', 'PATCH', 'PUT'):
+                uploading = scope['method'] == 'POST' and scope['path'] == '/api/v1/datasets'
+                cap = number('MAX_DATASET_ARCHIVE_BYTES', 32 * 1024 * 1024) if uploading else number('MAX_REQUEST_BYTES', 1048576)
+                content_length = next((v for k, v in scope.get('headers', []) if k == b'content-length'), None)
+                if content_length is not None:
+                    try:
+                        if int(content_length) > cap:
+                            return await reject(413, 'BODY_TOO_LARGE', 'Слишком большой запрос.')
+                    except ValueError:
+                        return await reject(400, 'INVALID_LENGTH', 'Неверная длина запроса.')
+                messages, size = [], 0
+                deadline = time.monotonic() + (60 if uploading else 15)
+                while True:
+                    try:
+                        message = await asyncio.wait_for(receive(), max(.01, deadline - time.monotonic()))
+                    except asyncio.TimeoutError:
+                        return await reject(408, 'BODY_TIMEOUT', 'Истекло время загрузки запроса.')
+                    if message['type'] == 'http.disconnect':
+                        return
+                    size += len(message.get('body', b''))
+                    if size > cap:
+                        return await reject(413, 'BODY_TOO_LARGE', 'Слишком большой запрос.')
+                    messages.append(message)
+                    if not message.get('more_body', False):
+                        break
+                cursor = iter(messages)
+                original_receive = receive
+
+                async def replay():
+                    try:
+                        return next(cursor)
+                    except StopIteration:
+                        return await original_receive()
+                receive = replay
+            await self.app(scope, receive, secured_send)
+        finally:
+            if uploading:
+                self.upload_slots.release()

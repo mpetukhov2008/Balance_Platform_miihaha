@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator
 from backend import catalog, domain, queries, dataset_upload
 from backend.store import Store, now, uid
 from backend.service import Service, STAGES, matches
-from backend.security import LimitExceeded, reserve, number, registration_enabled, validate_runtime, used, enabled
+from backend.security import LimitExceeded, reserve, number, registration_enabled, validate_runtime, used, enabled, session_for_token, csrf_matches, origin_allowed
 from backend.http_security import SecurityMiddleware
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
@@ -181,20 +181,19 @@ def create_app(store=None):
 
     def auth(request: Request):
         token = request.cookies.get("balance_session", "")
-        session = db.get("session", None, hashlib.sha256(token.encode()).hexdigest()) if token else None
-        if not session or session["expires"] < time.time():
+        session = session_for_token(db, token)
+        if not session:
             fail("UNAUTHENTICATED", "Войдите в приложение", 401)
         reserve(db.engine, [('http.user/' + session['user']['id'], 60, 1, number('USER_REQUESTS_PER_MINUTE', 600))])
         if request.method not in ("GET", "HEAD", "OPTIONS"):
-            if not hmac.compare_digest(request.headers.get("x-csrf-token", ""), session["csrfToken"]):
+            if not csrf_matches(request.headers.get("x-csrf-token", ""), session["csrfToken"]):
                 fail("CSRF", "Недействительный CSRF token", 403)
             check_origin(request)
         return session
 
     def check_origin(request):
         origin = request.headers.get("origin")
-        allowed = os.environ.get("ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:5173").split(",")
-        if origin and origin not in allowed:
+        if not origin_allowed(origin):
             fail("ORIGIN", "Недопустимый Origin", 403)
 
     def owned(kind, session, id):

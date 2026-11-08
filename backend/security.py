@@ -1,5 +1,6 @@
 """Persistent quotas and explicit public-server configuration checks."""
 import hashlib
+import hmac
 import os
 import time
 from urllib.parse import urlparse
@@ -34,6 +35,20 @@ def enabled(name):
 
 def registration_enabled():
     return enabled('ALLOW_REGISTRATION') and os.environ.get('EXECUTION_MODE', 'docker') == 'docker'
+
+
+def session_for_token(store, token):
+    item = store.get('session', None, hashlib.sha256(token.encode('utf-8')).hexdigest()) if token else None
+    return item if item and item['expires'] >= time.time() else None
+
+
+def csrf_matches(candidate, expected):
+    return hmac.compare_digest(candidate.encode('utf-8'), expected.encode('utf-8'))
+
+
+def origin_allowed(origin):
+    allowed = {value.strip() for value in os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8000,http://localhost:5173').split(',')}
+    return origin is None or origin in allowed
 
 
 def validate_runtime(store):

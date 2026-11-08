@@ -31,8 +31,13 @@ def execute(payload):
         raise RuntimeError("Unknown execution mode")
     try:
         with tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
+            child_env = dict(os.environ)
+            if mode == 'trusted-local':
+                allowed = {'PATH', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'LANG', 'LC_ALL', 'PYTHONPATH'}
+                child_env = {k: v for k, v in child_env.items() if k.upper() in allowed}
+            child_env['PYTHONIOENCODING'] = 'utf-8'
             process = subprocess.Popen(cmd,stdin=subprocess.PIPE,stdout=out,stderr=err,
-                env={**os.environ,"PYTHONIOENCODING":"utf-8"})
+                env=child_env)
             def feed():
                 try:
                     process.stdin.write(json.dumps(payload,ensure_ascii=False).encode("utf-8"))
