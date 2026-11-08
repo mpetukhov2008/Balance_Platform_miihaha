@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useApi } from "../api";
 import type { MockApiClient } from "../api/mock";
@@ -6,6 +7,8 @@ import { Icon } from "./Icon";
 import { BrandLogo } from "./BrandLogo";
 import { AppFooter, HackChip } from "./Hack";
 import { useTheme } from "../lib/theme";
+import { BRAND } from "../lib/brand";
+import { useTerms, type Mode } from "../lib/mode";
 
 export function DemoBanner() {
   const api = useApi();
@@ -20,6 +23,63 @@ export function DemoBanner() {
   );
 }
 
+/** Значок профиля с меню: режим интерфейса и выход. */
+function ProfileMenu({ name, demo, onLogout }: { name: string; demo: boolean; onLogout: () => void }) {
+  const terms = useTerms();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  const option = (m: Mode, title: string, hint: string) => (
+    <button role="menuitemradio" aria-checked={terms.mode === m} className={`mode-opt ${terms.mode === m ? "on" : ""}`} onClick={() => terms.setMode(m)}>
+      <span className="mode-radio" aria-hidden="true" />
+      <span>
+        <b>{title}</b>
+        <small>{hint}</small>
+      </span>
+    </button>
+  );
+  return (
+    <div className="profile" ref={ref}>
+      <button className="profile-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Профиль и режим интерфейса">
+        <span className="avatar" aria-hidden="true">{name.slice(0, 1)}</span>
+        <span className="top-meta">
+          <b>{name}</b>
+          <small>
+            <i className="mode-dot" style={{ background: demo ? "var(--warn)" : "var(--ok)" }} />
+            {terms.simple ? "обычный режим" : "продвинутый режим"}
+          </small>
+        </span>
+      </button>
+      {open && (
+        <div className="profile-menu" role="menu">
+          <div className="profile-head">
+            <b>{name}</b>
+            <small>{demo ? "Демонстрационные данные" : "Подключено к серверу"}</small>
+          </div>
+          <div className="menu-label">Режим интерфейса</div>
+          {option("simple", "Обычный", "Понятные русские подписи без технических терминов")}
+          {option("advanced", "Продвинутый", "Технические поля и коды: BEFORE/AFTER, PATH, CHANGE_TYPE")}
+          <div className="sep" />
+          <button role="menuitem" className="mode-opt" onClick={onLogout}>
+            <Icon name="logout" /> <span><b>Выйти</b></span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Layout() {
   const { session, logout } = useAuth();
   const api = useApi();
@@ -30,7 +90,7 @@ export function Layout() {
       <DemoBanner />
       <header className="topbar">
         <div className="topbar-in">
-          <NavLink to="/runs" className="brand" aria-label="Баланс Платформа — на главную">
+          <NavLink to="/runs" className="brand" aria-label={`${BRAND.name} — на главную`}>
             <BrandLogo height={38} />
             <span className="brand-divider" aria-hidden="true" />
             <div className="brand-sub">Анализ<br />изменений СПР</div>
@@ -48,14 +108,7 @@ export function Layout() {
             </NavLink>
           </nav>
           <div className="top-user">
-            <div className="avatar" aria-hidden="true">{name.slice(0, 1)}</div>
-            <div className="top-meta">
-              <b>{name}</b>
-              <small>
-                <i className="mode-dot" style={{ background: api.mode === "mock" ? "var(--warn)" : "var(--ok)" }} />
-                {api.mode === "mock" ? "демо-данные" : "реальный API"}
-              </small>
-            </div>
+            <ProfileMenu name={name} demo={api.mode === "mock"} onLogout={logout} />
             <button className="top-btn" onClick={toggle} title={dark ? "Светлая тема" : "Тёмная тема"} aria-label="Переключить тему">
               <Icon name={dark ? "sun" : "moon"} />
             </button>

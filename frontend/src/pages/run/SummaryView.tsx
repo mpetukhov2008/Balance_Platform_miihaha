@@ -6,6 +6,7 @@ import { dateTime, ms, num, STAGE_LABEL } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import { pivotLink } from "./PivotView";
 import { useRun } from "./RunPage";
+import { useTerms } from "../../lib/mode";
 import { loadAllChecks } from "./ChecksView";
 
 function Kpi({ label, value, of, foot, tone, hero }: { label: string; value: number | null; of?: number | null; foot?: React.ReactNode; tone?: string; hero?: boolean }) {
@@ -28,6 +29,7 @@ function Kpi({ label, value, of, foot, tone, hero }: { label: string; value: num
 }
 
 function Transitions({ s }: { s: Summary }) {
+  const t = useTerms();
   const values = [...new Set(s.decisionTransitions.flatMap((t) => [t.before ?? "—", t.after ?? "—"]))].sort();
   const get = (b: string, a: string) => s.decisionTransitions.find((t) => (t.before ?? "—") === b && (t.after ?? "—") === a)?.count;
   const max = Math.max(1, ...s.decisionTransitions.map((t) => t.count));
@@ -36,8 +38,8 @@ function Transitions({ s }: { s: Summary }) {
       <table className="t matrix">
         <thead>
           <tr>
-            <th>BEFORE ↓ / AFTER →</th>
-            {values.map((v) => <th key={v} className="num">{v}</th>)}
+            <th>{t.simple ? "Было ↓ / Стало →" : "BEFORE ↓ / AFTER →"}</th>
+            {values.map((v) => <th key={v} className="num">{t.decision(v)}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -62,6 +64,7 @@ function Transitions({ s }: { s: Summary }) {
 }
 
 export function SummaryView() {
+  const t = useTerms();
   const { run } = useRun();
   const api = useApi();
   const summary = useAsync(() => api.summary(run.id), [run.id]);
@@ -105,13 +108,13 @@ export function SummaryView() {
                   ) : (
                     <div className="stack">
                       <div className="row" style={{ gap: 18 }}>
-                        <div><div className="kpi-value" style={{ color: "var(--bad)" }}>{fails.length}</div><div className="muted small">FAIL, из них HIGH: {failHigh}</div></div>
-                        <div><div className="kpi-value" style={{ color: "var(--ok)" }}>{checks.data.items.length - fails.length}</div><div className="muted small">PASS</div></div>
+                        <div><div className="kpi-value" style={{ color: "var(--bad)" }}>{fails.length}</div><div className="muted small">{t.simple ? `проблем, из них уверенных: ${failHigh}` : `FAIL, из них HIGH: ${failHigh}`}</div></div>
+                        <div><div className="kpi-value" style={{ color: "var(--ok)" }}>{checks.data.items.length - fails.length}</div><div className="muted small">{t.simple ? "в норме" : "PASS"}</div></div>
                         <div><div className="kpi-value">{checks.data.total}</div><div className="muted small">строк отчёта · ревизия {checks.data.reportRevision}</div></div>
                       </div>
                       {fails.filter((c) => c.CONFIDENCE === "HIGH").slice(0, 4).map((c) => (
                         <div key={c.rowId} className="row small" style={{ gap: 8 }}>
-                          <span className="badge b-bad">FAIL</span> <b>{c.LABEL}</b> <span className="muted mono">{c.ARGUMENT}</span>
+                          <span className="badge b-bad">{t.result("FAIL")}</span> <b>{c.LABEL}</b> <span className="muted mono">{c.ARGUMENT}</span>
                         </div>
                       ))}
                     </div>

@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ApiContext, createApiClient, type ApiClient } from "./api";
 import { AuthProvider } from "./auth";
 import { App } from "./App";
+import { ModeProvider } from "./lib/mode";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "@fontsource-variable/manrope";
 import "@fontsource-variable/unbounded";
@@ -23,7 +24,9 @@ function Root() {
     <ApiContext.Provider value={api}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <ModeProvider>
+            <App />
+          </ModeProvider>
         </AuthProvider>
       </BrowserRouter>
     </ApiContext.Provider>

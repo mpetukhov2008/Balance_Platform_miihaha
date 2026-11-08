@@ -10,6 +10,7 @@ import { useAsync } from "../../lib/hooks";
 import { AttributeDetail } from "./AttributeDetail";
 import { RawJson } from "./RawJson";
 import { useRun } from "./RunPage";
+import { useTerms } from "../../lib/mode";
 
 const SEG_PAIRS = ["DECISION", "TOP_OFFER", "PD_MODEL", "CUTOFF", "REJECT_REASON", "SCORE_OKB"];
 
@@ -21,6 +22,7 @@ function segVal(v: unknown) {
 }
 
 export function ApplicationCard() {
+  const t = useTerms();
   const { run } = useRun();
   const { appId = "" } = useParams();
   const api = useApi();
@@ -88,9 +90,9 @@ export function ApplicationCard() {
                   <h1 className="mono">{d.APP_ID}</h1>
                 </div>
                 <div className="decision-flow">
-                  <div><div className="muted small">BEFORE (MASTER)</div><DecisionPill value={s.DECISION_BEFORE as string} /></div>
+                  <div><div className="muted small">{t.source("BEFORE")}</div><DecisionPill value={s.DECISION_BEFORE as string} /></div>
                   <Icon name="right" />
-                  <div><div className="muted small">AFTER (BETA)</div><DecisionPill value={s.DECISION_AFTER as string} /></div>
+                  <div><div className="muted small">{t.source("AFTER")}</div><DecisionPill value={s.DECISION_AFTER as string} /></div>
                   {Number(s.DECISION_CHANGED) === 1 ? <span className="badge b-bad">решение сменилось</span> : <span className="badge">решение то же</span>}
                 </div>
               </section>
@@ -99,18 +101,18 @@ export function ApplicationCard() {
                   <div className="card-head"><h2>Разрезы</h2></div>
                   <div className="table-wrap">
                   <table className="t">
-                    <thead><tr><th>Поле</th><th>BEFORE</th><th>AFTER</th></tr></thead>
+                    <thead><tr><th>Поле</th><th>{t.simple ? "Было" : "BEFORE"}</th><th>{t.simple ? "Стало" : "AFTER"}</th></tr></thead>
                     <tbody>
                       {SEG_PAIRS.filter((p) => `${p}_BEFORE` in s || `${p}_AFTER` in s).map((p) => {
                         const b = s[`${p}_BEFORE`], a = s[`${p}_AFTER`];
                         return (
                           <tr key={p} className={b !== a ? "seg-diff" : ""}>
-                            <td className="mono small">{p}</td><td>{segVal(b)}</td><td>{segVal(a)}</td>
+                            <td className={t.simple ? "small" : "mono small"}>{t.field(p)}</td><td>{p === "DECISION" ? <DecisionPill value={b as string} /> : segVal(b)}</td><td>{p === "DECISION" ? <DecisionPill value={a as string} /> : segVal(a)}</td>
                           </tr>
                         );
                       })}
                       {Object.entries(s).filter(([k]) => k !== "APP_ID" && !SEG_PAIRS.some((p) => k.startsWith(p + "_")) && k !== "DECISION_CHANGED").map(([k, v]) => (
-                        <tr key={k}><td className="mono small">{k}</td><td colSpan={2}>{segVal(v)}</td></tr>
+                        <tr key={k}><td className={t.simple ? "small" : "mono small"}>{t.field(k)}</td><td colSpan={2}>{segVal(v)}</td></tr>
                       ))}
                     </tbody>
                   </table>
@@ -160,7 +162,7 @@ export function ApplicationCard() {
                 <div className="table-wrap">
                   <table className="t attrs">
                     <thead>
-                      <tr><th>PATH</th><th>ARRAY_KEY</th><th>CHANGE_TYPE</th><th>BEFORE (MASTER)</th><th>AFTER (BETA)</th><th>Бакет BEFORE → AFTER</th></tr>
+                      <tr><th>{t.simple ? "Поле ответа" : "PATH"}</th><th>{t.simple ? "Элемент списка" : "ARRAY_KEY"}</th><th>{t.simple ? "Что произошло" : "CHANGE_TYPE"}</th><th>{t.source("BEFORE")}</th><th>{t.source("AFTER")}</th><th>{t.simple ? "Группа значений: было → стало" : "Бакет BEFORE → AFTER"}</th></tr>
                     </thead>
                     <tbody>
                       {p.items.map((r) => (

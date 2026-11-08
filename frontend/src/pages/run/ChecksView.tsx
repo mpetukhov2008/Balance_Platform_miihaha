@@ -9,6 +9,7 @@ import { num } from "../../lib/format";
 import { useAsync, useTrackedJob } from "../../lib/hooks";
 import { fetchAllPages } from "../../lib/pages";
 import { useRun } from "./RunPage";
+import { useTerms } from "../../lib/mode";
 
 /** Весь отчёт проверок постранично; итоги FAIL/PASS считаются только по полному набору. */
 export function loadAllChecks(api: ApiClient, runId: string) {
@@ -108,6 +109,7 @@ function AddCheck({ runId, onDone }: { runId: string; onDone: () => void }) {
 
 export function ChecksView() {
   const { run } = useRun();
+  const t = useTerms();
   const api = useApi();
   const [search] = useSearchParams();
   const focus = search.get("rowId");
@@ -147,12 +149,12 @@ export function ChecksView() {
                   <div>
                     <h2>Единый отчёт проверок</h2>
                     <div className="hint" data-testid="checks-totals">
-                      {num(d.total)} строк · FAIL {d.complete ? fails : "—"} · PASS {d.complete ? passes : "—"} · ревизия отчёта {d.reportRevision}. LOW — мало срабатываний, показано бледно.
+                      {num(d.total)} строк · {t.result("FAIL")} {d.complete ? fails : "—"} · {t.result("PASS")} {d.complete ? passes : "—"} · ревизия отчёта {d.reportRevision}. {t.simple ? "Строки, где данных мало, показаны бледно — это сигнал, а не точный вывод." : "LOW — мало срабатываний, показано бледно."}
                     </div>
                   </div>
                   <div className="row">
-                    <label className="check small"><input type="checkbox" checked={onlyFail} onChange={(e) => setOnlyFail(e.target.checked)} /> только FAIL</label>
-                    <label className="check small"><input type="checkbox" checked={hideLow} onChange={(e) => setHideLow(e.target.checked)} /> скрыть LOW</label>
+                    <label className="check small"><input type="checkbox" checked={onlyFail} onChange={(e) => setOnlyFail(e.target.checked)} /> {t.simple ? "только проблемы" : "только FAIL"}</label>
+                    <label className="check small"><input type="checkbox" checked={hideLow} onChange={(e) => setHideLow(e.target.checked)} /> {t.simple ? "скрыть строки с малым числом данных" : "скрыть LOW"}</label>
                   </div>
                 </div>
                 {!d.complete && (
@@ -173,7 +175,7 @@ export function ChecksView() {
                 <div className="table-wrap" style={{ maxHeight: "65vh" }}>
                   <table className="t" data-testid="checks-table">
                     <thead>
-                      <tr><th>LABEL</th><th>SOURCE</th><th>ARGUMENT</th><th className="num">CNT</th><th className="num">TOTAL</th><th className="num">METRIC</th><th>RESULT</th><th>CONFIDENCE</th><th>Заявки</th></tr>
+                      <tr><th>{t.field("LABEL")}</th><th>{t.field("SOURCE")}</th><th>{t.field("ARGUMENT")}</th><th className="num">{t.field("CNT")}</th><th className="num">{t.field("TOTAL")}</th><th className="num">{t.field("METRIC")}</th><th>{t.field("RESULT")}</th><th>{t.field("CONFIDENCE")}</th><th>Заявки</th></tr>
                     </thead>
                     <tbody>
                       {pageItems.map((c) => (
@@ -184,8 +186,8 @@ export function ChecksView() {
                           <td className="num">{num(c.CNT)}</td>
                           <td className="num">{num(c.TOTAL)}</td>
                           <td className="num"><Metric v={c.METRIC} /></td>
-                          <td className={`result-${c.RESULT}`}>{c.RESULT}</td>
-                          <td>{c.CONFIDENCE === "LOW" ? <span className="badge">LOW</span> : <span className="badge b-info">HIGH</span>}</td>
+                          <td className={`result-${c.RESULT}`} title={t.simple ? c.RESULT : undefined}>{t.result(c.RESULT)}</td>
+                          <td>{c.CONFIDENCE === "LOW" ? <span className="badge">{t.confidence("LOW")}</span> : <span className="badge b-info">{t.confidence("HIGH")}</span>}</td>
                           <td className="nowrap">
                             {c.APP_IDS.length ? (
                               <Link to={`../apps?checkRow=${encodeURIComponent(c.rowId)}`}>
