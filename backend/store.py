@@ -28,10 +28,20 @@ Index("ix_member_app",fact_members.c.run_id,fact_members.c.owner,fact_members.c.
 Index("ix_member_cover",fact_members.c.run_id,fact_members.c.owner,fact_members.c.app_id,fact_members.c.fact_ordinal)
 Index("ix_member_fact",fact_members.c.run_id,fact_members.c.owner,fact_members.c.fact_ordinal,fact_members.c.app_id)
 
+def database_url(url):
+    """Hosting providers (Render, Heroku) give postgres:// or postgresql://; the installed driver is psycopg 3."""
+    if not isinstance(url, str):  # an already-built SQLAlchemy URL
+        return url
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 class Store:
     def __init__(self, url=None):
         from backend.security import quotas, locks
-        self.engine = create_engine(url or os.environ.get("DATABASE_URL", "sqlite:///runtime/balance.db"))
+        self.engine = create_engine(database_url(url or os.environ.get("DATABASE_URL", "sqlite:///runtime/balance.db")))
         if self.engine.dialect.name == "sqlite":
             @event.listens_for(self.engine, "connect")
             def configure_sqlite(connection, _):

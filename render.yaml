@@ -1,4 +1,6 @@
-# Эта конфигурация допускает только проверенный код доверенной команды.
+# Развёртывание на Render из корневого Dockerfile: один веб-сервис отдаёт API и собранный
+# интерфейс с одного адреса (cookie-сессия и CSRF рассчитаны на один origin), worker — тот же образ.
+# Конфигурация допускает только проверенный код доверенной команды (EXECUTION_MODE=trusted-local).
 # Публичный доступ с пользовательским Python разворачивать через Docker Compose по README.
 databases:
   - name: balance-platform-db
@@ -7,32 +9,36 @@ databases:
     user: balance_user
 
 services:
-  # 1. Backend API (Web Service)
+  # 1. API + интерфейс (Web Service, Docker)
   - type: web
-    name: balance-api
-    runtime: python
+    name: balance-app
+    runtime: docker
     plan: free
-    buildCommand: "pip install -r backend/requirements.lock.txt"
-    startCommand: "uvicorn backend.api:app --host 0.0.0.0 --port $PORT"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: balance-platform-db
           property: connectionString
+      # Адрес самого сервиса, например https://balance-app.onrender.com (без / в конце)
       - key: APP_PUBLIC_URL
         sync: false
+      # Тот же адрес, что и APP_PUBLIC_URL
       - key: ALLOWED_ORIGINS
         sync: false
-    healthCheckPath: /api/v1/health
+      - key: COOKIE_SECURE
+        value: "true"
 
-  # 2. Background Worker (для обработки задач)
-  # Важно: у Background Worker на Render нет бесплатного тарифа
+  # 2. Background Worker (тот же образ). У Background Worker на Render нет бесплатного тарифа.
   - type: worker
     name: balance-worker
-    runtime: python
+    runtime: docker
     plan: starter
-    buildCommand: "pip install -r backend/requirements.lock.txt"
-    startCommand: "python -m backend.worker"
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python -m backend.worker
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -40,27 +46,11 @@ services:
           property: connectionString
       - key: EXECUTION_MODE
         value: trusted-local
+      - key: APP_PUBLIC_URL
+        sync: false
       - key: AI_PROVIDER
         value: yandex
       - key: AI_FOLDER_ID
         sync: false
       - key: AI_API_KEY
         sync: false
-
-  # 3. Frontend (Статический сайт)
-  # У статических сайтов НЕТ поля plan, его нельзя указывать
-  - type: web
-    name: balance-frontend
-    runtime: static
-    buildCommand: "npm --prefix frontend ci && npm --prefix frontend run build"
-    staticPublishPath: "./frontend/dist"
-    envVars:
-      - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: balance-api
-          property: host
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
