@@ -17,6 +17,12 @@ class Service:
     def script(self, owner, id):
         return self.store.get("script", owner, id) or next((s for s in catalog.scripts() if s["id"] == id), None)
 
+    def dataset(self, owner, id):
+        return self.store.get('dataset', owner, id) or next((d for d in catalog.datasets() if d['id'] == id), None)
+
+    def load_dataset(self, owner, id):
+        return self.store.load_dataset(owner, id) if id.startswith('custom-') else catalog.load_dataset(id)
+
     def job(self, owner, type, payload, run=None, log=None):
         item = dict(id=uid(), owner=owner, type=type, status="QUEUED", payload=payload,
                     stdout="", stderr="", diagnostics=[], previewRows=[], truncated=False, error=None, reportRevision=None)
@@ -27,7 +33,7 @@ class Service:
 
     def start_run(self, owner, config):
         id = uid()
-        dataset = next(d for d in catalog.datasets() if d["id"] == config["datasetId"])
+        dataset = self.dataset(owner, config["datasetId"])
         snapshot = copy.deepcopy(config)
         for binding in [snapshot["normalizer"], snapshot["comparator"], snapshot["aggregator"], *snapshot["checks"]]:
             binding["script"] = self.script(owner, binding["scriptId"])
@@ -95,7 +101,7 @@ class Service:
         times = {}
         current = None
         try:
-            pairs = catalog.load_dataset(config["datasetId"])
+            pairs = self.load_dataset(owner, config["datasetId"])
             seg = domain.segments(pairs)
             records = [{"APP_ID": id, "SOURCE": side, "document": doc} for id, p in pairs.items() for side, doc in p.items()]
             normalized, compared, facts, checks = [], [], [], []
@@ -201,7 +207,7 @@ class Service:
                     job["previewRows"] = rows[:100]
                     job["truncated"] = len(rows) > 100
                 else:
-                    pairs = catalog.load_dataset(p["datasetId"])
+                    pairs = self.load_dataset(owner, p["datasetId"])
                     records = [{"APP_ID": id, "SOURCE": side, "document": d} for id, pair in pairs.items() for side, d in pair.items()]
                     builtin = {s["kind"]: dict(script=s, params={}) for s in catalog.scripts() if s["kind"] != "CHECK"}
                     n = binding if binding["script"]["kind"] == "NORMALIZE" else builtin["NORMALIZE"]

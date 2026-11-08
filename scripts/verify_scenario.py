@@ -146,7 +146,7 @@ def main():
     parser.add_argument("--base-url", default="http://localhost:8000")
     parser.add_argument("--username", required=True)
     parser.add_argument("--other-username")
-    parser.add_argument("--dataset", choices=("samples", "full"), default="full")
+    parser.add_argument("--dataset", default="full", help="Built-in or uploaded dataset ID")
     parser.add_argument("--run-id", help="Reuse an existing published run owned by this user")
     parser.add_argument("--timeout", type=int, default=600)
     parser.add_argument("--output", default="runtime/scenario-verification.json")

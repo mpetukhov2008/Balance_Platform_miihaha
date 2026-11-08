@@ -82,6 +82,11 @@ export class MockApiClient implements ApiClient {
       { id: "full", name: "Полный датасет", kind: "FULL" as const, status: "UNAVAILABLE" as const, appCount: null, description: "В демо-режиме недоступен" },
     ]);
   };
+  datasetUploadOptions: C["datasetUploadOptions"] = async () => ({ maxArchiveBytes: 33554432, maxExpandedBytes: 67108864, maxPairs: 20000, maxDatasets: 5 });
+  uploadDataset: C["uploadDataset"] = async () => {
+    this.auth();
+    throw new ApiError(422, "DEMO_ONLY", "Для загрузки своего датасета откройте приложение с работающим сервером. Демо использует искусственные данные.");
+  };
   scripts: C["scripts"] = async (kind, p, ps) => {
     this.auth();
     return page(this.scriptsDb.filter((s) => !kind || s.kind === kind), p, ps ?? 200);

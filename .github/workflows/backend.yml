@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r backend/requirements.lock.txt
-      - run: python -m pytest tests/test_queries.py tests/test_synthetic_api.py tests/test_security.py -q
+      - run: python -m pytest tests/test_queries.py tests/test_synthetic_api.py tests/test_security.py tests/test_dataset_upload.py -q
         env:
           TEST_POSTGRES_URL: postgresql+psycopg://test:test-only-ci@localhost:5432/balance_test
 

@@ -6,6 +6,9 @@ MULTI={"PRODUCTS","PARTNER_TYPE","ROUTING_METHOD"}
 NUMERIC={"DIFF_FLAG","DECISION_CHANGED"}
 
 def field(name, table=records):
+    column={"PATH":"path", "DIFF_FLAG":"diff_flag", "CHANGE_TYPE":"change_type"}.get(name)
+    if column:
+        return table.c[column]
     element=table.c.payload[name]
     return element.as_integer() if name in NUMERIC else element.as_string()
 
@@ -30,11 +33,15 @@ def fact_scope(owner,run_id,filters):
     return [records.c.owner==owner,records.c.run_id==run_id,records.c.section=="facts",*predicates(filters)]
 
 def member_query(owner,run_id,filters):
-    # Resolve matching fact ordinals once. A direct join can repeatedly decode
-    # the same large fact JSON for every member (hundreds of thousands of times).
-    ordinals=select(records.c.ordinal).where(*fact_scope(owner,run_id,filters))
-    return select(fact_members.c.app_id).where(fact_members.c.run_id==run_id,
-        fact_members.c.owner==owner,fact_members.c.fact_ordinal.in_(ordinals)).distinct()
+    members=select(fact_members.c.app_id).where(fact_members.c.run_id==run_id,fact_members.c.owner==owner)
+    if not filters:
+        # All memberships already belong to this report: no fact JSON or semi-join needed.
+        return members.distinct()
+    # PostgreSQL may flatten IN(subquery) and re-evaluate large JSON per member.
+    # A materialized CTE preserves the intended single evaluation of fact filters.
+    ordinals=select(records.c.ordinal).where(*fact_scope(owner,run_id,filters)).cte('matching_facts')
+    ordinals=ordinals.prefix_with('MATERIALIZED',dialect='postgresql')
+    return members.where(fact_members.c.fact_ordinal.in_(select(ordinals.c.ordinal))).distinct()
 
 def pivot(engine,owner,run_id,row_fields,col_fields,filters,page,page_size):
     scope=fact_scope(owner,run_id,filters)
@@ -73,7 +80,9 @@ def applications(engine,owner,run_id,filters,app_ids,page,page_size):
     seg=records.alias("s")
     scope=[seg.c.run_id==run_id,seg.c.owner==owner,seg.c.section=="segments"]
     if filters:
-        scope.append(seg.c.app_id.in_(member_query(owner,run_id,filters)))
+        matched=member_query(owner,run_id,filters).cte('matching_applications')
+        matched=matched.prefix_with('MATERIALIZED',dialect='postgresql')
+        scope.append(seg.c.app_id.in_(select(matched.c.app_id)))
     if app_ids is not None:
         scope.append(seg.c.app_id.in_(app_ids))
     with engine.connect() as c:
