@@ -6,6 +6,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
   return {
     plugins: [react()],
+    build: {
+      // Шрифты всегда отдельными файлами: CSP сервера (font-src 'self') блокирует data:-шрифты.
+      assetsInlineLimit: (file: string) => (/\.(woff2?|ttf|otf|eot)$/i.test(file) ? false : undefined),
+    },
     server: {
       port: 5173,
       strictPort: true,
