@@ -15,12 +15,15 @@ class ExecutionError(RuntimeError):
 
 def execute(payload):
     mode = os.environ.get("EXECUTION_MODE", "docker")
+    if mode != 'docker' and any(os.environ.get(k, '').lower() == 'true' for k in ('PUBLIC_MODE', 'ALLOW_REGISTRATION')):
+        raise RuntimeError('Public execution requires Docker')
     container = "balance-" + uuid.uuid4().hex
     if mode == "trusted-local":
         # Explicitly unsafe development mode, never described as sandboxing.
         cmd = [sys.executable, "-m", "backend.sandbox_entry"]
     elif mode == "docker":
         cmd = ["docker", "run", "--rm", "--name", container, "-i", "--network=none",
+               "--init", "--ipc=none", "--ulimit=nofile=256:256", "--ulimit=core=0:0",
                "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
                "--pids-limit=64", "--memory="+os.environ.get("RUNNER_MEMORY","2g"), "--cpus=1", "--user=65534:65534",
                "--tmpfs", "/tmp:rw,noexec,nosuid,size=32m", os.environ.get("RUNNER_IMAGE", "balance-runner:local")]
@@ -39,7 +42,8 @@ def execute(payload):
             writer=threading.Thread(target=feed,daemon=True)
             writer.start()
             deadline=time.monotonic()+int(os.environ.get("SCRIPT_TIMEOUT","180"))
-            limit=int(os.environ.get("SCRIPT_OUTPUT_LIMIT","536870912"))
+            limit=int(os.environ.get("CHECK_OUTPUT_LIMIT", "8388608") if payload.get('kind') == 'CHECK'
+                      else os.environ.get("SCRIPT_OUTPUT_LIMIT","536870912"))
             try:
                 while process.poll() is None:
                     if time.monotonic()>deadline:

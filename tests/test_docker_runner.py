@@ -14,6 +14,11 @@ import socket
 def run(rows, params):
     assert os.getuid() == 65534
     assert not os.environ.get("AI_API_KEY")
+    assert not os.path.exists('/var/run/docker.sock')
+    status = open('/proc/self/status').read()
+    assert 'CapEff:\t0000000000000000' in status
+    assert 'NoNewPrivs:\t1' in status
+    assert 'Seccomp:\t2' in status
     try:
         with open("/app/probe", "w") as f:
             f.write("forbidden")

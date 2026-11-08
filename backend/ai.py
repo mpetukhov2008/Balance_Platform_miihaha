@@ -3,9 +3,10 @@ import json
 import os
 import httpx
 from backend.store import now
+from backend.security import reserve, refund, number, LimitExceeded
 
 
-def review(summary, checks):
+def review(summary, checks, store=None, owner=None):
     provider = os.environ.get("AI_PROVIDER", "openai-compatible")
     key = os.environ.get("AI_API_KEY", "")
     folder = os.environ.get("AI_FOLDER_ID", "")
@@ -41,15 +42,38 @@ def review(summary, checks):
         "или подозрительным сочетаниям. Если иных оснований нет, прямо укажи недостаточность данных. "
         "Не изменяй PASS/FAIL и не принимай кредитных решений. "
         "Если проверки показаны частично, укажи это. Мнение дополняет вычисленный отчёт.")
+    content = json.dumps(payload, ensure_ascii=False)
+    output_cap = number('AI_MAX_OUTPUT_TOKENS', 1500)
+    # UTF-8 bytes + a framing allowance are a conservative input-token reservation.
+    input_bound = len(content.encode('utf-8')) + len(instruction.encode('utf-8')) + 1024
+    reserved_tokens = input_bound + output_cap
+    if input_bound > number('AI_MAX_INPUT_TOKENS', 20000) or output_cap == 0:
+        return dict(result, status='UNAVAILABLE', error='Вход ИИ превышает лимит или генерация отключена.')
+    receipts = []
+    if store is not None:
+        if owner is None:
+            raise ValueError('AI quota owner is required')
+        try:
+            receipts = reserve(store.engine, [
+                ('ai.tokens.user/' + owner, 86400, reserved_tokens, number('AI_TOKENS_PER_USER_DAY', 30000)),
+                ('ai.tokens.global', 86400, reserved_tokens, number('AI_TOKENS_GLOBAL_DAY', 200000)),
+                ('ai.requests.user/' + owner, 86400, 1, number('AI_REQUESTS_PER_USER_DAY', 10)),
+                ('ai.requests.global', 86400, 1, number('AI_REQUESTS_GLOBAL_DAY', 50))])
+        except LimitExceeded:
+            return dict(result, status='UNAVAILABLE', error='Суточный лимит ИИ исчерпан. Обратитесь к администратору или дождитесь нового дня UTC.')
     try:
         response = httpx.post(url, headers=headers, json={
             "model": model, "messages": [{"role": "system", "content": instruction},
-            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
-            "temperature": 0.2, "max_tokens": 1500}, timeout=45)
+            {"role": "user", "content": content}],
+            "temperature": 0.2, "max_tokens": output_cap}, timeout=45)
         response.raise_for_status()
-        text = response.json()["choices"][0]["message"]["content"]
+        data = response.json()
+        text = data["choices"][0]["message"]["content"]
         if not isinstance(text, str) or not text.strip():
             raise ValueError("Empty model response")
+        actual = data.get('usage', {}).get('total_tokens')
+        if store is not None and type(actual) is int and 0 <= actual <= reserved_tokens:
+            refund(store.engine, receipts[:2], reserved_tokens - actual)
         return dict(result, status="READY", text=text.strip(), generatedAt=now())
     except httpx.HTTPStatusError as exc:
         return dict(result, status="FAILED", error=f"Провайдер ИИ вернул HTTP {exc.response.status_code}")
