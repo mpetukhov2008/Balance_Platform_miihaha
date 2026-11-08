@@ -30,11 +30,15 @@ def fact_scope(owner,run_id,filters):
     return [records.c.owner==owner,records.c.run_id==run_id,records.c.section=="facts",*predicates(filters)]
 
 def member_query(owner,run_id,filters):
-    # Resolve matching fact ordinals once. A direct join can repeatedly decode
-    # the same large fact JSON for every member (hundreds of thousands of times).
-    ordinals=select(records.c.ordinal).where(*fact_scope(owner,run_id,filters))
-    return select(fact_members.c.app_id).where(fact_members.c.run_id==run_id,
-        fact_members.c.owner==owner,fact_members.c.fact_ordinal.in_(ordinals)).distinct()
+    members=select(fact_members.c.app_id).where(fact_members.c.run_id==run_id,fact_members.c.owner==owner)
+    if not filters:
+        # All memberships already belong to this report: no fact JSON or semi-join needed.
+        return members.distinct()
+    # PostgreSQL may flatten IN(subquery) and re-evaluate large JSON per member.
+    # A materialized CTE preserves the intended single evaluation of fact filters.
+    ordinals=select(records.c.ordinal).where(*fact_scope(owner,run_id,filters)).cte('matching_facts')
+    ordinals=ordinals.prefix_with('MATERIALIZED',dialect='postgresql')
+    return members.where(fact_members.c.fact_ordinal.in_(select(ordinals.c.ordinal))).distinct()
 
 def pivot(engine,owner,run_id,row_fields,col_fields,filters,page,page_size):
     scope=fact_scope(owner,run_id,filters)

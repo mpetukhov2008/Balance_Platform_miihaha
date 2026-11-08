@@ -42,3 +42,17 @@ def test_empty_check_membership_and_null_filter(tmp_path):
     result=queries.applications(db.engine,"u","r",[{"field":"DECISION_BEFORE","op":"eq","value":"APPROVE"}],None,1,3)
     assert result["total"]==6 and len(result["items"])==3
     assert queries.applications(db.engine,"u","r",[{"field":"PARTNER_TYPE","op":"eq","value":None}],None,1,50)["total"]==6
+
+
+def test_memberships_stay_scoped_across_datasets_and_multiple_reports(tmp_path):
+    db=fixture(tmp_path)
+    db.put('result','u',dict(id='other-report',rows=[],segments=[],checks=[],facts=[{
+        'APP_IDS':['foreign-application'], 'CNT':1, 'PATH':'x', 'SOURCE':'AFTER', 'DIFF_FLAG':1}]))
+    # Uploaded source rows share the records table, but are not report facts.
+    db.save_dataset('u',dict(id='custom-query-fixture',sizeBytes=1),{'uploaded':{
+        'BEFORE':{'appData':{'application_id':'uploaded'}},'AFTER':{'appData':{'application_id':'uploaded'}}}})
+    _,_,_,_,unique=queries.pivot(db.engine,'u','r',[],[],[],1,50)
+    assert unique==6
+    filtered=queries.applications(db.engine,'u','r',[{'field':'PATH','op':'eq','value':'x'}],None,1,50)
+    assert filtered['total']==6 and 'foreign-application' not in {r['APP_ID'] for r in filtered['items']}
+    assert queries.applications(db.engine,'other','r',[{'field':'PATH','op':'eq','value':'x'}],None,1,50)['total']==0
