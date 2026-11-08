@@ -10,6 +10,7 @@ import type {
   Configuration,
   ConfigurationBody,
   Dataset,
+  DatasetUploadOptions,
   Dimension,
   LogPage,
   NewScript,
@@ -66,6 +67,8 @@ export interface ApiClient {
   logout(): Promise<void>;
 
   datasets(page?: number, pageSize?: number): Promise<Page<Dataset>>;
+  datasetUploadOptions(): Promise<DatasetUploadOptions>;
+  uploadDataset(name: string, archive: File): Promise<Dataset>;
   scripts(kind?: ScriptKind, page?: number, pageSize?: number): Promise<Page<Script>>;
   script(id: string): Promise<Script>;
   scriptContracts(): Promise<{ items: ScriptContract[] }>;

@@ -49,7 +49,8 @@ class SecurityMiddleware:
                 return await reject(429, 'RATE_LIMIT', str(error), {'Retry-After': str(error.retry_after)})
 
         if scope['method'] in ('POST', 'PATCH', 'PUT'):
-            cap = number('MAX_REQUEST_BYTES', 1048576)
+            uploading = scope['method'] == 'POST' and scope['path'] == '/api/v1/datasets'
+            cap = number('MAX_DATASET_ARCHIVE_BYTES', 32 * 1024 * 1024) if uploading else number('MAX_REQUEST_BYTES', 1048576)
             content_length = next((v for k, v in scope.get('headers', []) if k == b'content-length'), None)
             if content_length is not None:
                 try:
@@ -58,7 +59,7 @@ class SecurityMiddleware:
                 except ValueError:
                     return await reject(400, 'INVALID_LENGTH', 'Неверная длина запроса.')
             messages, size = [], 0
-            deadline = time.monotonic() + 15
+            deadline = time.monotonic() + (60 if uploading else 15)
             while True:
                 try:
                     message = await asyncio.wait_for(receive(), max(.01, deadline - time.monotonic()))

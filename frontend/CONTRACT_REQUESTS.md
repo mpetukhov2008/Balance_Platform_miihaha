@@ -71,3 +71,10 @@
 **Экраны:** вход и регистрация.
 
 **Обновление:** Codex реализовал регистрацию в PR #7 (`GET /auth/options`, `POST /auth/register` → `{ok}`, 403 `REGISTRATION_DISABLED`, 409 `USERNAME_TAKEN`, пароль от 15 символов). Frontend переведён на этот контракт, предложение с `inviteCode` снято.
+
+## Загрузка личных датасетов (реализовано)
+
+`GET /api/v1/datasets/upload-options` возвращает `maxArchiveBytes`, `maxExpandedBytes`, `maxPairs`, `maxDatasets`.
+`POST /api/v1/datasets?name=...`: ZIP как двоичное тело `application/zip`, с cookie и `X-CSRF-Token`; ответ 201 — `Dataset` с `kind=CUSTOM`, `status=READY`, `appCount`. Новый набор входит в обычный `GET /datasets` только у владельца и поддерживает конфигурации, полные запуски и предпросмотр процедур. Ошибки: 422 `INVALID_DATASET`, 413 `BODY_TOO_LARGE`, 429 `RATE_LIMIT`.
+
+Архив: парные UTF-8 JSON в `BEFORE/AFTER` или `BEFORE_MASTER/AFTER_BETA`, необязательная общая папка. Имя без `.json` равно `appData.application_id`. UI находится в редакторе конфигурации, после загрузки автоматически выбирает полученный `datasetId`. В демо загрузка явно отклоняется, искусственный успех не имитируется.

@@ -53,6 +53,34 @@ jobs:
               assert c.get('/limits').json()['aiRequestsUsed'] == 0
               assert c.get('/runs').json()['total'] == 0
           PY
+      - name: Upload private paired dataset through API
+        id: upload
+        run: |
+          python - <<'PY'
+          import io, os, zipfile
+          from pathlib import Path
+          import httpx
+          output = io.BytesIO()
+          with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as z:
+              for side in ('BEFORE', 'AFTER'):
+                  for path in sorted((Path('Исходники/samples') / side).glob('*.json')):
+                      z.write(path, 'uploaded/' + side + '/' + path.name)
+          with httpx.Client(base_url='http://localhost:8000/api/v1', timeout=60) as c:
+              login = c.post('/auth/login', json={'username': 'scenario', 'password': os.environ['SCENARIO_PASSWORD']})
+              login.raise_for_status()
+              c.headers['X-CSRF-Token'] = login.json()['csrfToken']
+              response = c.post('/datasets', params={'name': 'Uploaded samples'}, content=output.getvalue(), headers={'Content-Type': 'application/zip'})
+              response.raise_for_status()
+              dataset = response.json()
+              assert dataset['kind'] == 'CUSTOM' and dataset['appCount'] == 4
+          with httpx.Client(base_url='http://localhost:8000/api/v1') as c:
+              c.post('/auth/login', json={'username': 'other', 'password': os.environ['SCENARIO_PASSWORD']}).raise_for_status()
+              assert dataset['id'] not in [d['id'] for d in c.get('/datasets').json()['items']]
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('dataset_id=' + dataset['id'] + '\n')
+          PY
+      - name: Compare uploaded dataset with container worker
+        run: python scripts/verify_scenario.py --username scenario --other-username other --dataset "${{ steps.upload.outputs.dataset_id }}" --output runtime/upload-scenario-verification.json
       - run: python scripts/verify_scenario.py --username scenario --other-username other --dataset full
       - name: Backup and restore into a separate database
         run: |
@@ -66,7 +94,7 @@ jobs:
         if: always()
         with:
           name: compose-scenario-result
-          path: runtime/scenario-verification.json
+          path: runtime/*scenario-verification.json
           if-no-files-found: ignore
       - run: docker compose logs --tail 150 api worker
         if: failure()

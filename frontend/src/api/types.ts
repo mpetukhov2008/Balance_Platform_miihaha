@@ -13,6 +13,13 @@ export type Dataset = {
   description: string;
 };
 
+export type DatasetUploadOptions = {
+  maxArchiveBytes: number;
+  maxExpandedBytes: number;
+  maxPairs: number;
+  maxDatasets: number;
+};
+
 export type ScriptKind = "NORMALIZE" | "COMPARE" | "AGGREGATE" | "CHECK";
 export const SCRIPT_KINDS: ScriptKind[] = ["NORMALIZE", "COMPARE", "AGGREGATE", "CHECK"];
 

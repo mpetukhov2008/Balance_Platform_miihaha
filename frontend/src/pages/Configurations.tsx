@@ -36,9 +36,12 @@ export function ConfigurationsPage() {
         title="Конфигурации"
         sub="Датасет, процедуры нормализации, сравнения и подготовки фактов, набор проверок с параметрами."
         actions={
-          <Link className="btn btn-primary" to="/configurations/new">
-            <Icon name="plus" /> Новая конфигурация
-          </Link>
+          <>
+            <Link className="btn" to="/configurations/new">Загрузить датасет</Link>
+            <Link className="btn btn-primary" to="/configurations/new">
+              <Icon name="plus" /> Новая конфигурация
+            </Link>
+          </>
         }
       />
       {startError !== undefined && (

@@ -4,6 +4,7 @@ import { ApiError, useApi } from "../api";
 import type { Binding, ConfigurationBody, Script, ScriptKind } from "../api/types";
 import { Icon } from "../components/Icon";
 import { JsonParams } from "../components/JsonParams";
+import { DatasetUpload } from "../components/DatasetUpload";
 import { ErrorAlert, Loading, PageHead } from "../components/ui";
 import { KIND_LABEL } from "../lib/format";
 import { useAsync } from "../lib/hooks";
@@ -52,6 +53,7 @@ export function ConfigurationEditor() {
   const [form, setForm] = useState<ConfigurationBody | null>(null);
   const [invalid, setInvalid] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<unknown>();
   const [saved, setSaved] = useState(false);
 
@@ -120,10 +122,10 @@ export function ConfigurationEditor() {
         actions={
           <>
             {saved && <span className="badge b-ok"><Icon name="check" size={13} /> Сохранено</span>}
-            <button className="btn" disabled={busy || hasInvalid || nameMissing} onClick={() => save(false)}>
+            <button className="btn" disabled={busy || uploading || hasInvalid || nameMissing || !form.datasetId} onClick={() => save(false)}>
               <Icon name="save" /> Сохранить
             </button>
-            <button className="btn btn-primary" disabled={busy || hasInvalid || nameMissing} onClick={() => save(true)}>
+            <button className="btn btn-primary" disabled={busy || uploading || hasInvalid || nameMissing || !form.datasetId} onClick={() => save(true)}>
               <Icon name="play" /> Сохранить и запустить
             </button>
           </>
@@ -158,6 +160,10 @@ export function ConfigurationEditor() {
                 ))}
               </div>
             </div>
+            <DatasetUpload disabled={busy} onBusy={setUploading} onUploaded={(dataset) => {
+              datasets.setData({ ...datasets.data!, items: [...datasets.data!.items.filter((d) => d.id !== dataset.id), dataset], total: datasets.data!.total + 1 });
+              set({ datasetId: dataset.id });
+            }} />
             <label className="check">
               <input type="checkbox" checked={form.aiReviewEnabled} onChange={(e) => set({ aiReviewEnabled: e.target.checked })} />
               Запросить независимое мнение ИИ по агрегатам

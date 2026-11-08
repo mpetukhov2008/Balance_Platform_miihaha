@@ -41,7 +41,7 @@ export class HttpApiClient implements ApiClient {
 
   private async request<T>(method: string, path: string, body?: unknown, asBlob = false): Promise<T> {
     const headers: Record<string, string> = { Accept: asBlob ? "text/html" : "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (body !== undefined) headers["Content-Type"] = body instanceof Blob ? "application/zip" : "application/json";
     if (method !== "GET" && this.csrf) headers["X-CSRF-Token"] = this.csrf;
     let res: Response;
     try {
@@ -49,7 +49,7 @@ export class HttpApiClient implements ApiClient {
         method,
         headers,
         credentials: "include",
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : body instanceof Blob ? body : JSON.stringify(body),
       });
     } catch {
       throw new ApiError(0, "NETWORK", "Сервер недоступен. Проверьте, что backend запущен.");
@@ -82,6 +82,8 @@ export class HttpApiClient implements ApiClient {
   };
 
   datasets: C["datasets"] = (page = 1, pageSize = 50) => this.request("GET", `/datasets${qs({ page, pageSize })}`);
+  datasetUploadOptions: C["datasetUploadOptions"] = () => this.request("GET", "/datasets/upload-options");
+  uploadDataset: C["uploadDataset"] = (name, archive) => this.request("POST", `/datasets${qs({ name })}`, archive);
   scripts: C["scripts"] = (kind, page = 1, pageSize = 200) => this.request("GET", `/scripts${qs({ kind, page, pageSize })}`);
   script: C["script"] = (id) => this.request("GET", `/scripts/${enc(id)}`);
   scriptContracts: C["scriptContracts"] = () => this.request("GET", "/script-contracts");

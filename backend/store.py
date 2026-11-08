@@ -50,6 +50,38 @@ class Store:
             with self.engine.begin() as c:
                 c.execute(objects.insert(), [{"id": item["id"], "kind": kind, "owner": owner, "data": item} for item in items])
 
+    def save_dataset(self, owner, item, pairs):
+        """Publish metadata and documents atomically, shared by API and worker."""
+        from backend.security import insert_ignore, locks, number, LimitExceeded
+        with self.engine.begin() as c:
+            insert_ignore(c, locks, dict(id='dataset-admission', value=0))
+            c.execute(update(locks).where(locks.c.id == 'dataset-admission').values(value=locks.c.value + 1))
+            existing = list(c.execute(select(objects.c.data).where(objects.c.kind == 'dataset', objects.c.owner == owner)).scalars())
+            if len(existing) >= number('MAX_DATASETS_PER_USER', 5):
+                raise LimitExceeded('Достигнут лимит сохранённых датасетов. Обратитесь к администратору.', 3600)
+            if sum(d['sizeBytes'] for d in existing) + item['sizeBytes'] > number('MAX_DATASET_STORAGE_BYTES', 256 * 1024 * 1024):
+                raise LimitExceeded('Недостаточно места для датасета в вашем аккаунте.', 3600)
+            c.execute(objects.insert().values(id=item['id'], kind='dataset', owner=owner, data=item))
+            batch = []
+            for app_id, pair in sorted(pairs.items()):
+                for side, doc in pair.items():
+                    batch.append(dict(run_id=item['id'], section='dataset', ordinal=len(batch), owner=owner,
+                                      app_id=app_id, payload={'APP_ID': app_id, 'SOURCE': side, 'document': doc}))
+            for start in range(0, len(batch), 500):
+                c.execute(records.insert(), batch[start:start + 500])
+        return item
+
+    def load_dataset(self, owner, id):
+        if self.get('dataset', owner, id) is None:
+            raise ValueError('Датасет недоступен')
+        with self.engine.connect() as c:
+            rows = c.execute(select(records.c.payload).where(records.c.run_id == id,
+                records.c.section == 'dataset', records.c.owner == owner).order_by(records.c.ordinal)).scalars()
+            pairs = {}
+            for row in rows:
+                pairs.setdefault(row['APP_ID'], {})[row['SOURCE']] = row['document']
+            return pairs
+
     def put(self, kind, owner, data):
         with self.engine.begin() as c:
             if kind == "result":

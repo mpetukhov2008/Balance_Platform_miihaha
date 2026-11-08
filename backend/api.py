@@ -10,12 +10,12 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal
-from fastapi import FastAPI, Request, Response, Depends, HTTPException, Query
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, Query, Body
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict, model_validator
-from backend import catalog, domain, queries
+from backend import catalog, domain, queries, dataset_upload
 from backend.store import Store, now, uid
 from backend.service import Service, STAGES, matches
 from backend.security import LimitExceeded, reserve, number, registration_enabled, validate_runtime, used, enabled
@@ -25,6 +25,7 @@ from sqlalchemy.exc import IntegrityError
 from backend.store import objects
 
 HASH_SLOTS = threading.BoundedSemaphore(2)
+UPLOAD_SLOTS = threading.BoundedSemaphore(2)
 
 class Model(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -217,10 +218,12 @@ def create_app(store=None):
             fail("NOT_FOUND", "Скрипт не найден", 404)
         return data
 
-    def dataset(id):
-        if enabled('PUBLIC_MODE') and id not in os.environ.get('PUBLIC_DATASET_IDS', '').split(','):
+    def dataset(session, id):
+        owner = session['user']['id']
+        personal = db.get('dataset', owner, id)
+        if not personal and enabled('PUBLIC_MODE') and id not in os.environ.get('PUBLIC_DATASET_IDS', '').split(','):
             fail('DATASET_UNAVAILABLE', 'Датасет не опубликован администратором')
-        d = next((d for d in catalog.datasets() if d["id"] == id), None)
+        d = personal or svc.dataset(owner, id)
         if not d or d["status"] != "READY":
             fail("DATASET_UNAVAILABLE", "Датасет недоступен")
         return d
@@ -231,7 +234,7 @@ def create_app(store=None):
         return {"scriptId": s["id"], "params": b["params"], "script": s}
 
     def config_validate(session, data):
-        dataset(data["datasetId"])
+        dataset(session, data["datasetId"])
         for key, kind in (("normalizer", "NORMALIZE"), ("comparator", "COMPARE"), ("aggregator", "AGGREGATE")):
             if script(session, data[key]["scriptId"])["kind"] != kind:
                 fail("SCRIPT_KIND", "Неверный тип процедуры")
@@ -311,7 +314,33 @@ def create_app(store=None):
         items = catalog.datasets()
         if enabled('PUBLIC_MODE'):
             items = [d for d in items if d['id'] in os.environ.get('PUBLIC_DATASET_IDS', '').split(',')]
+        items += db.all('dataset', s['user']['id'])
         return page(items, page_, pageSize)
+
+    @app.get(base + '/datasets/upload-options')
+    def upload_options(s=Depends(auth)):
+        return dataset_upload.options()
+
+    @app.post(base + '/datasets', status_code=201)
+    def upload_dataset(name: str = Query(min_length=1, max_length=200),
+                       content: bytes = Body(media_type='application/zip'), s=Depends(auth)):
+        name = name.strip()
+        if not name:
+            fail('VALIDATION_ERROR', 'Укажите название датасета.')
+        owner = s['user']['id']
+        if not UPLOAD_SLOTS.acquire(blocking=False):
+            raise LimitExceeded('Сервис загрузки занят. Попробуйте через несколько секунд.', 2)
+        try:
+            reserve(db.engine, [('dataset-upload/' + owner, 3600, 1, number('DATASET_UPLOADS_PER_USER_HOUR', 10))])
+            try:
+                pairs, size = dataset_upload.parse_archive(content)
+            except dataset_upload.UploadError as exc:
+                fail('INVALID_DATASET', str(exc))
+            item = dict(id='custom-' + uid(), name=name, kind='CUSTOM', status='READY', appCount=len(pairs),
+                        description='Загружен вами · парные JSON до и после', createdAt=now(), sizeBytes=size)
+            return db.save_dataset(owner, item, pairs)
+        finally:
+            UPLOAD_SLOTS.release()
 
     @app.get(base + "/script-contracts")
     def contracts(s=Depends(auth)):
@@ -503,7 +532,7 @@ def create_app(store=None):
                 fail("CONTEXT", "Требуется runId")
             ready(s, body.runId)
         else:
-            dataset(body.datasetId)
+            dataset(s, body.datasetId)
         j = svc.job(s["user"]["id"], "PREVIEW", {"binding":b,"datasetId":body.datasetId,"runId":body.runId})
         return {"executionId":j["id"]}
 
