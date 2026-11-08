@@ -53,6 +53,8 @@ def test_memberships_stay_scoped_across_datasets_and_multiple_reports(tmp_path):
         'BEFORE':{'appData':{'application_id':'uploaded'}},'AFTER':{'appData':{'application_id':'uploaded'}}}})
     _,_,_,_,unique=queries.pivot(db.engine,'u','r',[],[],[],1,50)
     assert unique==6
-    filtered=queries.applications(db.engine,'u','r',[{'field':'PATH','op':'eq','value':'x'}],None,1,50)
+    filtered=queries.applications(db.engine,'u','r',[
+        {'field':'PATH','op':'eq','value':'x'}, {'field':'DIFF_FLAG','op':'eq','value':0},
+        {'field':'CHANGE_TYPE','op':'eq','value':'SAME'}],None,1,50)
     assert filtered['total']==6 and 'foreign-application' not in {r['APP_ID'] for r in filtered['items']}
     assert queries.applications(db.engine,'other','r',[{'field':'PATH','op':'eq','value':'x'}],None,1,50)['total']==0

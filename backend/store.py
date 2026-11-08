@@ -83,6 +83,7 @@ class Store:
             return pairs
 
     def put(self, kind, owner, data):
+        analyze_facts = kind == 'result' and 'facts' in data and self.engine.dialect.name == 'postgresql'
         with self.engine.begin() as c:
             if kind == "result":
                 # Publish all sections and metadata in one transaction.
@@ -121,6 +122,13 @@ class Store:
                 c.execute(update(objects).where(objects.c.id == data["id"], objects.c.kind == kind, objects.c.owner == owner).values(data=data))
             else:
                 c.execute(objects.insert().values(id=data["id"], kind=kind, owner=owner, data=data))
+        if analyze_facts:
+            # A second, much larger report can arrive before autovacuum refreshes
+            # statistics from the first. Refresh after bulk publication so the
+            # next interactive query does not inherit a tiny-dataset join plan.
+            with self.engine.begin() as c:
+                c.exec_driver_sql('ANALYZE records')
+                c.exec_driver_sql('ANALYZE fact_members')
         return data
 
     def get(self, kind, owner, id, sections=None):

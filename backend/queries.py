@@ -6,6 +6,9 @@ MULTI={"PRODUCTS","PARTNER_TYPE","ROUTING_METHOD"}
 NUMERIC={"DIFF_FLAG","DECISION_CHANGED"}
 
 def field(name, table=records):
+    column={"PATH":"path", "DIFF_FLAG":"diff_flag", "CHANGE_TYPE":"change_type"}.get(name)
+    if column:
+        return table.c[column]
     element=table.c.payload[name]
     return element.as_integer() if name in NUMERIC else element.as_string()
 
@@ -77,7 +80,9 @@ def applications(engine,owner,run_id,filters,app_ids,page,page_size):
     seg=records.alias("s")
     scope=[seg.c.run_id==run_id,seg.c.owner==owner,seg.c.section=="segments"]
     if filters:
-        scope.append(seg.c.app_id.in_(member_query(owner,run_id,filters)))
+        matched=member_query(owner,run_id,filters).cte('matching_applications')
+        matched=matched.prefix_with('MATERIALIZED',dialect='postgresql')
+        scope.append(seg.c.app_id.in_(select(matched.c.app_id)))
     if app_ids is not None:
         scope.append(seg.c.app_id.in_(app_ids))
     with engine.connect() as c:
